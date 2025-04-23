@@ -15,7 +15,7 @@ export default function RegisterPage() {
       <div className="hidden md:block relative">
         <div className="absolute inset-0 bg-black/50 z-10"></div>
         <Image
-          src="https://source.unsplash.com/featured/?cinema,movie"
+          src="/images/register.jpg"
           alt="Cinema background"
           fill
           className="object-cover"

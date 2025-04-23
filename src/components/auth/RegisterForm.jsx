@@ -53,7 +53,8 @@ const RegisterForm = () => {
       password: '',
       confirmPassword: '',
       terms: false,
-    },
+    },  mode: "onChange", // hoặc "onChange" tùy bạn
+
   })
   
   const onSubmit = async (data) => {

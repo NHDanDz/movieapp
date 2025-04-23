@@ -1,5 +1,5 @@
  
-@tailwind utilities;
+@import "tailwindcss";
  
 @layer base {
   :root {
@@ -116,6 +116,7 @@
   background: rgb(120, 205, 4);
 }
 
+/* Thêm vào cuối file globals.css */
 .seat-available {
   background-color: rgb(96, 93, 169);
 }
@@ -129,5 +130,21 @@
 }
 
 .seat-suggested {
+  background-color: rgb(14, 151, 218);
+}
+
+.bg-cinema-seat-available {
+  background-color: rgb(96, 93, 169);
+}
+
+.bg-cinema-seat-reserved {
+  background-color: rgb(65, 66, 70);
+}
+
+.bg-cinema-seat-selected {
+  background-color: rgb(120, 205, 4);
+}
+
+.bg-cinema-seat-suggested {
   background-color: rgb(14, 151, 218);
 }

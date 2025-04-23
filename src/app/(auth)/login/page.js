@@ -11,7 +11,7 @@ export default function LoginPage() {
       <div className="hidden md:block relative">
         <div className="absolute inset-0 bg-black/60 z-10"></div>
         <Image
-          src="https://source.unsplash.com/featured/?cinema,popcorn"
+          src="/images/login.jpg"
           alt="Cinema background"
           fill
           className="object-cover"
