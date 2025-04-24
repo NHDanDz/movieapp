@@ -15,8 +15,11 @@ import BookingSeats from '@/components/booking/BookingSeats'
 import BookingCheckout from '@/components/booking/BookingCheckout'
 import BookingInvitation from '@/components/booking/BookingInvitation'
 import LoginForm from '@/components/auth/LoginForm'
+import { useParams } from 'next/navigation'
 
-export default function BookingPage({ params }) {
+export default function BookingPage() {
+  const params = useParams(); 
+  
   const { id: movieId } = params
   const [movie, setMovie] = useState(null)
   const [cinemas, setCinemas] = useState([])
@@ -75,26 +78,63 @@ export default function BookingPage({ params }) {
   }, [movieId, user, setSelectedMovie, getSuggestedSeats])
   
   // Fetch cinema seats when cinema is selected
-  useEffect(() => {
-    const fetchCinemaSeats = async () => {
-      if (!selectedCinema) return
-      
-      try {
-        setLoading(true)
-        const cinemaRes = await cinemaApi.getById(selectedCinema)
-        
-        if (cinemaRes.data && cinemaRes.data.seats) {
-          setSeats(cinemaRes.data.seats)
-        }
-      } catch (error) {
-        console.error('Error fetching cinema seats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+// Fetch cinema seats when cinema is selected
+useEffect(() => {
+  const fetchCinemaSeats = async () => {
+    if (!selectedCinema) return
     
-    fetchCinemaSeats()
-  }, [selectedCinema])
+    try {
+      setLoading(true)
+      const cinemaRes = await cinemaApi.getById(selectedCinema)
+      
+      if (cinemaRes.data && cinemaRes.data.seats) {
+        // Kiểm tra định dạng của seats từ API
+        console.log('Seats data format:', cinemaRes.data.seats);
+        
+        // Đảm bảo seats là một mảng 2 chiều
+        let seatsData = cinemaRes.data.seats;
+        if (!Array.isArray(seatsData) || !seatsData.length || !Array.isArray(seatsData[0])) {
+          // Nếu không phải mảng 2D, tạo mảng mẫu
+          seatsData = [
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0]
+          ];
+        }
+        
+        setSeats(seatsData)
+      } else {
+        // Tạo mảng mẫu nếu không có dữ liệu
+        setSeats([
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0]
+        ])
+      }
+    } catch (error) {
+      console.error('Error fetching cinema seats:', error)
+      // Tạo mảng mẫu nếu có lỗi
+      setSeats([
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0]
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  fetchCinemaSeats()
+}, [selectedCinema])
   
   if (loading) {
     return (

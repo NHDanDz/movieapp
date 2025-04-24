@@ -162,5 +162,5 @@ export function getMovieImage(movie) {
   }
   
   // Nếu không tìm thấy, trả về hình ảnh mặc định
-  return 'https://source.unsplash.com/featured/?movie'
+  return '/images/login.jpg'
 }

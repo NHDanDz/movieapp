@@ -9,13 +9,15 @@ import MovieBanner from '@/components/movies/MovieBanner'
 import CinemaShowtimes from '@/components/booking/CinemaShowtimes'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 
-export default function MovieDetailPage({ params }) {
+export default function MovieDetailPage() {
+  const params = useParams()
+
   const [movie, setMovie] = useState(null)
   const [showtimes, setShowtimes] = useState([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
-  
+  const router = useRouter() 
   useEffect(() => {
     const fetchMovieDetails = async () => {
       try {

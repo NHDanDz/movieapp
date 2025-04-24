@@ -15,13 +15,14 @@ import {
   CardTitle
 } from "@/components/ui/card"
 import { formatCurrency, formatDate, getMovieImage } from '@/lib/utils'
+import { useParams } from 'next/navigation'
 
-export default function CinemaDetailPage({ params }) {
+export default function CinemaDetailPage() {
   const [cinema, setCinema] = useState(null)
   const [showtimes, setShowtimes] = useState([])
   const [movies, setMovies] = useState({})
   const [loading, setLoading] = useState(true)
-  
+  const params = useParams(); 
   const router = useRouter()
   const { id } = params
   
@@ -221,9 +222,8 @@ export default function CinemaDetailPage({ params }) {
             {dates.map((date) => (
               <TabsContent key={date} value={date}>
                 <div className="space-y-6">
-                  {showtimesByDay[date]
-                    // Group by movie
-                    .reduce((groups, showtime) => {
+                  {Object.values(
+                    showtimesByDay[date].reduce((groups, showtime) => {
                       const movieId = showtime.movieId
                       if (!groups[movieId]) {
                         groups[movieId] = {
@@ -234,9 +234,9 @@ export default function CinemaDetailPage({ params }) {
                       groups[movieId].showtimes.push(showtime)
                       return groups
                     }, {})
-                    // Convert to array and sort by movie title
-                    .toSorted((a, b) => a.movie.title.localeCompare(b.movie.title))
-                    .map(({ movie, showtimes }) => (
+                  )
+                  .sort((a, b) => a.movie.title.localeCompare(b.movie.title))
+                  .map(({ movie, showtimes }) => (
                       <Card key={movie._id} className="border-gray-800">
                         <CardHeader className="pb-2">
                           <div className="flex items-center gap-4">
