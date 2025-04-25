@@ -318,10 +318,10 @@ export default function AdminDashboard() {
       
       {/* Overview Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-800">Tổng doanh thu</CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
@@ -332,10 +332,10 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng đặt vé</CardTitle>
-            <Ticket className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-800">Tổng đặt vé</CardTitle>
+            <Ticket className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalReservations.toLocaleString('vi-VN')}</div>
@@ -346,10 +346,10 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng người dùng</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-800">Tổng người dùng</CardTitle>
+            <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString('vi-VN')}</div>
@@ -360,10 +360,10 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Phim & Rạp</CardTitle>
-                <Film className="h-4 w-4 text-muted-foreground" /> {/* Thay thế MovieIcon bằng Film */}
+                <CardTitle className="text-sm font-medium text-gray-800">Phim & Rạp</CardTitle>
+                <Film className="h-4 w-4 text-blue-500" /> {/* Thay thế MovieIcon bằng Film */}
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{stats.totalMovies} Phim / {stats.totalCinemas} Rạp</div>
@@ -377,7 +377,7 @@ export default function AdminDashboard() {
       
       {/* Charts - Reservation and Revenue */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Lượt đặt vé</CardTitle>
             <CardDescription>Thống kê lượt đặt vé theo tháng</CardDescription>
@@ -387,7 +387,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Doanh thu</CardTitle>
             <CardDescription>Thống kê doanh thu theo tháng (triệu VND)</CardDescription>
@@ -400,7 +400,7 @@ export default function AdminDashboard() {
       
       {/* Charts - Reservations by Day and Movies by Genre */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Đặt vé theo ngày</CardTitle>
             <CardDescription>Số lượng đặt vé theo các ngày trong tuần</CardDescription>
@@ -410,7 +410,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Phim theo thể loại</CardTitle>
             <CardDescription>Phân bố phim theo thể loại</CardDescription>
@@ -425,7 +425,7 @@ export default function AdminDashboard() {
       
       {/* Popular Movies and Cinemas */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Phim phổ biến nhất</CardTitle>
             <CardDescription>Top 5 phim có lượt đặt vé cao nhất</CardDescription>
@@ -450,7 +450,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card  className="bg-white">
           <CardHeader>
             <CardTitle>Rạp phổ biến nhất</CardTitle>
             <CardDescription>Top 5 rạp có lượt đặt vé cao nhất</CardDescription>
@@ -475,7 +475,7 @@ export default function AdminDashboard() {
       </div>
       
       {/* Recent Reservations */}
-      <Card>
+      <Card  className="bg-white">
         <CardHeader>
           <CardTitle>Đặt vé gần đây</CardTitle>
           <CardDescription>Các đặt vé mới nhất trong hệ thống</CardDescription>
