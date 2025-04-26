@@ -25,7 +25,6 @@ import {
 const loginSchema = z.object({
   username: z.string().min(1, 'Tên đăng nhập là bắt buộc'),
   password: z.string().min(1, 'Mật khẩu là bắt buộc'),
- mode: "onChange", // hoặc "onChange" tùy bạn
 })
 
 const LoginForm = ({ isDialog = false }) => {
@@ -42,6 +41,7 @@ const LoginForm = ({ isDialog = false }) => {
       username: '',
       password: '',
     },
+    mode: "onChange",
   })
   
   const onSubmit = async (data) => {

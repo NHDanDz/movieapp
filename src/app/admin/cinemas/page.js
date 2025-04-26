@@ -627,7 +627,7 @@ export default function AdminCinemaManagement() {
                   {(imagePreview || selectedCinema?.image) && (
                     <div className="relative w-full aspect-video rounded-md overflow-hidden">
                       <Image
-                        src={'/images/cinema-placeholder.jpg'}
+                        src={imagePreview || selectedCinema?.image || '/images/cinema-placeholder.jpg'}
                         alt="Preview"
                         fill
                         className="object-cover"

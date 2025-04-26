@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+ 
 import { 
   Film, 
   Users, 
@@ -22,7 +23,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 const ADMIN_LINKS = [
   {
-    title: 'Bảng điều khiển',
+    title: 'Báo cáo thống kê',
     href: '/admin',
     icon: <LayoutDashboard className="mr-3 h-5 w-5" />
   },
@@ -62,37 +63,67 @@ export default function AdminLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const router = useRouter()
   const { user, isAuthenticated, logout } = useAuth()
-   
+  
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Kiểm tra quyền admin
+  useEffect(() => {
+    console.log('AdminLayout useEffect running');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('user:', user);
+    
+    // Nếu đang trong quá trình xác thực đầu tiên, đợi
+    if (isAuthenticated === false && user === null) {
+      // Đợi một chút để AuthContext hoàn thành kiểm tra
+      const timer = setTimeout(() => {
+        setIsAuthLoading(false);
+      }, 1000); // Đợi 1 giây
+      
+      return () => clearTimeout(timer);
+    }
+    
+    setIsAuthLoading(false);
+    
+    // Chỉ xử lý chuyển hướng khi không còn trong trạng thái loading
+    if (!isAuthLoading) {
+      if (!isAuthenticated) {
+        console.log('User not authenticated, redirecting to /login');
+        router.push('/login');
+        return;
+      }
+      
+      const allowedRoles = ['admin', 'manager', 'superadmin'];
+      if (user && !allowedRoles.includes(user.role)) {
+        console.log('User role not allowed:', user.role);
+        router.push('/');
+      }
+    }
+  }, [user, isAuthenticated, router, isAuthLoading]);
+  
+  // Hiển thị loading khi đang kiểm tra xác thực
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
   }
-  useEffect(() => {
-    // Ẩn header và footer
-    const header = document.querySelector('header')
-    const footer = document.querySelector('footer')
-    
-    if (header) header.style.display = 'none'
-    if (footer) footer.style.display = 'none'
-    
-    // Khôi phục khi component unmount
-    return () => {
-      if (header) header.style.display = ''
-      if (footer) footer.style.display = ''
-    }
-  }, [])
-   
+  
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       {/* Sidebar cho desktop */}
       <aside 
-  className={`fixed inset-y-0 left-0 z-40 border-r border-gray-200 bg-white shadow-sm transition-all duration-300 ${
-    isSidebarOpen ? 'w-64' : 'w-20'
-  } hidden md:block`}
+        className={`fixed inset-y-0 left-0 z-40 border-r border-border bg-card transition-all duration-300 ${
+          isSidebarOpen ? 'w-64' : 'w-20'
+        } hidden md:block`}
       >
-          <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 bg-white">
-
+        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
           <Link href="/admin" className="flex items-center">
-            <Film className={`h-8 w-8 text-blue-600 ${!isSidebarOpen && 'mx-auto'}`} />
+            <Film className={`h-8 w-8 text-primary-dark ${!isSidebarOpen && 'mx-auto'}`} />
             {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Cinema+ Admin</span>}
           </Link>
           <Button 
@@ -112,7 +143,7 @@ export default function AdminLayout({ children }) {
                 <li key={index}>
                   <Link 
                     href={link.href} 
-                    className={`flex items-center rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700 ${
+                    className={`flex items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
                       !isSidebarOpen && 'justify-center'
                     }`}
                   >
@@ -139,8 +170,8 @@ export default function AdminLayout({ children }) {
       
       {/* Mobile sidebar */}
       <Sheet>
-      <div className="fixed top-0 left-0 right-0 h-16 border-b bg-white shadow-sm flex items-center justify-between px-4 md:hidden z-30">
-        <div className="flex items-center">
+        <div className="fixed top-0 left-0 right-0 h-16 border-b bg-card flex items-center justify-between px-4 md:hidden z-30">
+          <div className="flex items-center">
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-6 w-6" />
@@ -151,7 +182,7 @@ export default function AdminLayout({ children }) {
         </div>
         
         <SheetContent side="left" className="w-64 p-0">
-          <div className="flex flex-col h-full bg-white">
+          <div className="flex flex-col h-full bg-card">
             <div className="flex h-16 items-center px-4 border-b border-border">
               <Link href="/admin" className="flex items-center">
                 <Film className="h-8 w-8 text-primary-dark" />
@@ -190,9 +221,9 @@ export default function AdminLayout({ children }) {
       </Sheet>
       
       {/* Main content */}
-      <main className={`flex-1 overflow-y-auto bg-gray-50 transition-all duration-300 ${
-  isSidebarOpen ? 'md:ml-64' : 'md:ml-20'
-} mt-16 md:mt-0`}>
+      <main className={`flex-1 overflow-y-auto bg-background transition-all duration-300 ${
+        isSidebarOpen ? 'md:ml-64' : 'md:ml-20'
+      } mt-16 md:mt-0`}>
         <div className="container mx-auto p-4 md:p-6">
           {children}
         </div>

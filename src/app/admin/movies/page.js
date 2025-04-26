@@ -314,19 +314,13 @@ export default function AdminMovieManagement() {
     try {
       setSubmitting(true)
       
-      // TODO: Implement API call to update movie
-      // const response = await movieApi.update(selectedMovie._id, data)
-      
-      // Mô phỏng cập nhật phim
+      // Gọi API để cập nhật
+      const response = await movieApi.update(selectedMovie._id, data)
+      console.log(data);
+      // Cập nhật state sau khi API thành công
       const updatedMovies = movies.map(movie => {
         if (movie._id === selectedMovie._id) {
-          return {
-            ...movie,
-            ...data,
-            releaseDate: data.releaseDate.toISOString(),
-            endDate: data.endDate.toISOString(),
-            image: imagePreview || movie.image
-          }
+          return response.data // hoặc sử dụng dữ liệu từ response
         }
         return movie
       })
@@ -610,9 +604,9 @@ export default function AdminMovieManagement() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-1">
             {/* Cột trái - thông tin cơ bản */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <FormField
                 control={form.control}
                 name="title"
@@ -657,14 +651,14 @@ export default function AdminMovieManagement() {
                   name="language"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base">Ngôn ngữ</FormLabel>
+                      <FormLabel className="text-base ">Ngôn ngữ</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Chọn ngôn ngữ" />
+                          <SelectTrigger className="h-10 ">
+                            <SelectValue  placeholder="Chọn ngôn ngữ" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className = 'bg-gray-100'>
                           {movieLanguages.map(lang => (
                             <SelectItem key={lang} value={lang}>{lang}</SelectItem>
                           ))}
@@ -1101,7 +1095,9 @@ export default function AdminMovieManagement() {
       {/* Modal thêm phim */}
       <Dialog open={showAddDrawer} onOpenChange={setShowAddDrawer}>
         <DialogContent className="!max-w-[900px] p-0 bg-white overflow-hidden rounded-xl shadow-xl border-none">
-          <div className="flex flex-col !max-h-[90vh]">
+           <div className="flex flex-col !max-h-[90vh]">
+           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 text-white">
+
           <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 text-white">
            <div className="flex items-center justify-between">
                 <div>
@@ -1123,6 +1119,7 @@ export default function AdminMovieManagement() {
                 </Button>
               </div>
             </div>
+            </DialogHeader>
             
             <ScrollArea className="flex-1 p-6 max-h-[calc(80vh-140px)]">
               <MovieForm 
@@ -1157,29 +1154,27 @@ export default function AdminMovieManagement() {
       {/* Modal sửa phim */}
       <Dialog open={showEditDrawer} onOpenChange={setShowEditDrawer}>
         <DialogContent className="!max-w-[900px] p-0 bg-white overflow-hidden rounded-xl shadow-xl border-none">
-          <div className="flex flex-col max-h-[120vh]">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center">
-                    <Pencil className="h-5 w-5 mr-2" />
-                    Sửa thông tin phim
-                  </h2>
-                  <p className="text-white/80 text-sm mt-1">
-                    Cập nhật thông tin chi tiết về phim
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowEditDrawer(false)}
-                  className="rounded-full h-8 w-8 text-white hover:bg-white/20"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+          <DialogHeader className="bg-gradient-to-r from-black to-gray-600 px-6 py-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold flex items-center text-white">
+                  <Pencil className="h-5 w-5 mr-2" />
+                  Sửa thông tin phim
+                </DialogTitle>
+                <DialogDescription className="text-white/80 text-sm mt-1">
+                  Cập nhật thông tin chi tiết về phim
+                </DialogDescription>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEditDrawer(false)}
+                className="rounded-full h-8 w-8 text-white hover:bg-white/20"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            
+          </DialogHeader>
             <ScrollArea className="flex-1 p-6 max-h-[calc(90vh-140px)]">
               <MovieForm 
                 onSubmit={handleEditMovie} 
@@ -1205,14 +1200,15 @@ export default function AdminMovieManagement() {
                 {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Cập nhật
               </Button>
-            </div>
-          </div>
+            </div> 
         </DialogContent>
       </Dialog>
       
       {/* Modal xóa phim */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="max-w-md p-0 bg-white overflow-hidden rounded-xl shadow-xl border-none">
+        <DialogHeader className="bg-red-500 px-6 py-4 text-white">
+
           <div className="bg-red-500 px-6 py-4 text-white">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold flex items-center">
@@ -1229,7 +1225,7 @@ export default function AdminMovieManagement() {
               </Button>
             </div>
           </div>
-          
+        </DialogHeader>
           <div className="p-6">
             <div className="flex items-start mb-6">
               <div className="mr-4 mt-0.5">
@@ -1261,7 +1257,7 @@ export default function AdminMovieManagement() {
                   </div>
                   <div>
                     <h4 className="font-medium">{selectedMovie?.title}</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm">
                       {selectedMovie?.director && `Đạo diễn: ${selectedMovie.director}`}
                     </p>
                   </div>
