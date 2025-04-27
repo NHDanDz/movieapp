@@ -1,12 +1,12 @@
-// server/src/index.js
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../.env') });
 }
 
-// Kết nối SQL Server thay vì MongoDB
+// Kết nối SQL Server
 require('./db/mssql');
 
 // Routes
@@ -21,26 +21,20 @@ const app = express();
 app.disable('x-powered-by');
 const port = process.env.PORT || 8080;
 
-// Serve static files from the React app
+// Enable CORS
+app.use(cors());
+
+// Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
+app.use('/movies', express.static(path.join(__dirname, '../../public/movies')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-app.use(function(req, res, next) {
-  // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  // Request methods you wish to allow
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-
-  // Request headers you wish to allow
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,X-Access-Token,XKey,Authorization'
-  );
-
-  // Pass to next layer of middleware
+// Middleware để log request để dễ debug
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
+
 app.use(express.json());
 app.use(userRouter);
 app.use(movieRouter);
@@ -49,9 +43,16 @@ app.use(showtimeRouter);
 app.use(reservationRouter);
 app.use(invitationsRouter);
 
+// Thêm route test API
+app.get('/api/test', (req, res) => res.send('API server is running'));
+
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
 app.get('/*', (req, res) => {
-  res.sendFile(path.join(__dirname + '../client/index.html'));
+  res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
-app.listen(port, () => console.log(`app is running in PORT: ${port}`));
+
+app.listen(port, () => {
+  console.log(`Server is running on PORT: ${port}`);
+  console.log(`Serving static files from: ${path.join(__dirname, '../../public')}`);
+});
