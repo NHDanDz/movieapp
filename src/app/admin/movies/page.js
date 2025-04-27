@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { movieApi } from '@/lib/api'
-import { formatDate, getMovieImage } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
@@ -131,6 +131,18 @@ const movieSchema = z.object({
   image: z.string().optional(),
 })
 
+// Hàm lấy hình ảnh phim với xử lý domain chưa được cấu hình
+const getMovieImage = (movie) => {
+  if (!movie || !movie.image) return '/images/default-movie.jpg';
+  
+  // Xử lý URL từ domain chưa được cấu hình
+  if (movie.image.includes('example.com')) {
+    return '/images/default-movie.jpg';
+  }
+  
+  return movie.image;
+}
+
 export default function AdminMovieManagement() {
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
@@ -145,6 +157,7 @@ export default function AdminMovieManagement() {
   const [submitting, setSubmitting] = useState(false)
   const [imagePreview, setImagePreview] = useState('')
   const [imageFile, setImageFile] = useState(null)
+  const [showImagePreview, setShowImagePreview] = useState(false)
   const [activeGenreFilter, setActiveGenreFilter] = useState('')
   
   const { toast } = useToast()
@@ -260,7 +273,8 @@ export default function AdminMovieManagement() {
     if (!file) return
     
     setImageFile(file)
-    
+    setShowImagePreview(true) // Thêm dòng này
+
     // Create image preview
     const reader = new FileReader()
     reader.onload = () => {
@@ -279,11 +293,11 @@ export default function AdminMovieManagement() {
       
       // Mô phỏng thêm phim
       const newMovie = {
-        _id: `movie-${Date.now()}`,
+        id: `movie-${Date.now()}`,
         ...data,
         releaseDate: data.releaseDate.toISOString(),
         endDate: data.endDate.toISOString(),
-        image: imagePreview || '/images/login.jpg'
+        image: imagePreview || '/images/default-movie.jpg'
       }
       
       setMovies([...movies, newMovie])
@@ -315,11 +329,11 @@ export default function AdminMovieManagement() {
       setSubmitting(true)
       
       // Gọi API để cập nhật
-      const response = await movieApi.update(selectedMovie._id, data)
-      console.log(data);
-      // Cập nhật state sau khi API thành công
+ 
+      const response = await movieApi.update(selectedMovie.id, data)
+       // Cập nhật state sau khi API thành công
       const updatedMovies = movies.map(movie => {
-        if (movie._id === selectedMovie._id) {
+        if (movie.id === selectedMovie.id) {
           return response.data // hoặc sử dụng dữ liệu từ response
         }
         return movie
@@ -354,10 +368,10 @@ export default function AdminMovieManagement() {
       setSubmitting(true)
       
       // TODO: Implement API call to delete movie
-      // await movieApi.delete(selectedMovie._id)
+      // await movieApi.delete(selectedMovie.id)
       
       // Mô phỏng xóa phim
-      const updatedMovies = movies.filter(movie => movie._id !== selectedMovie._id)
+      const updatedMovies = movies.filter(movie => movie.id !== selectedMovie.id)
       setMovies(updatedMovies)
       
       toast({
@@ -383,7 +397,7 @@ export default function AdminMovieManagement() {
   const setupEditMovie = (movie) => {
     setSelectedMovie(movie)
     setImagePreview('')
-    
+    setShowImagePreview(movie.image ? true : false) // Thêm dòng này
     form.reset({
       title: movie.title || '',
       description: movie.description || '',
@@ -420,6 +434,7 @@ export default function AdminMovieManagement() {
     return (
       <div className="flex flex-wrap gap-2 my-4">
         <Badge 
+          key="all-genres"
           variant={activeGenreFilter === '' ? "default" : "outline"}
           className="cursor-pointer hover:bg-primary/90 transition-colors" 
           onClick={() => setActiveGenreFilter('')}
@@ -429,7 +444,7 @@ export default function AdminMovieManagement() {
         
         {usedGenres.map(genre => (
           <Badge 
-            key={genre}
+            key={`filter-${genre}`}
             variant={activeGenreFilter === genre ? "default" : "outline"} 
             className="cursor-pointer hover:bg-primary/90 transition-colors"
             onClick={() => setActiveGenreFilter(activeGenreFilter === genre ? '' : genre)}
@@ -475,7 +490,7 @@ export default function AdminMovieManagement() {
         <div className="grid grid-cols-2 gap-2 mb-3">
           {selectedGenres.length > 0 && selectedGenres.map(genre => (
             <Badge 
-              key={genre} 
+              key={`selected-${genre}`}
               variant="outline" 
               className="group text-xs py-1 flex items-center justify-between pl-2 pr-1 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors"
             >
@@ -499,7 +514,7 @@ export default function AdminMovieManagement() {
                 const isSelected = selectedGenres.includes(genre);
                 return (
                   <div 
-                    key={genre} 
+                    key={`genre-option-${genre}`}
                     className={`flex items-center space-x-2 p-1.5 rounded-md cursor-pointer transition-colors ${
                       isSelected ? 'bg-primary/10' : 'hover:bg-muted'
                     }`}
@@ -516,8 +531,7 @@ export default function AdminMovieManagement() {
                       className={`text-sm leading-none cursor-pointer ${isSelected ? 'font-medium' : ''}`}
                     >
                       {genre}
-                    </label>
-                    {isSelected && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
+                    </label> 
                   </div>
                 )
               })}
@@ -660,7 +674,7 @@ export default function AdminMovieManagement() {
                         </FormControl>
                         <SelectContent className = 'bg-gray-100'>
                           {movieLanguages.map(lang => (
-                            <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                            <SelectItem key={`lang-${lang}`} value={lang}>{lang}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -784,7 +798,7 @@ export default function AdminMovieManagement() {
                   </span>
                 </FormLabel>
                 <div className="border rounded-lg p-4 space-y-4 bg-white">
-                  {!(imagePreview || (selectedMovie?.image && !imagePreview)) ? (
+                {!(imagePreview || (showImagePreview && selectedMovie?.image)) ? (
                     <div className="flex items-center justify-center border-2 border-dashed rounded-md py-6 px-2 border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors">
                       <label htmlFor="movie-image" className="cursor-pointer flex flex-col items-center justify-center w-full">
                         <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
@@ -831,6 +845,7 @@ export default function AdminMovieManagement() {
                             onClick={() => {
                               setImagePreview('');
                               setImageFile(null);
+                              setShowImagePreview(false); // Thêm dòng này
                             }}
                           >
                             <X className="h-3 w-3" />
@@ -842,8 +857,9 @@ export default function AdminMovieManagement() {
                         <Image
                           src={imagePreview || (selectedMovie ? getMovieImage(selectedMovie) : '')}
                           alt="Preview"
-                          fill
-                          className="object-cover"
+                          width={400}
+                          height={240}
+                          className="object-cover w-full h-full"
                         />
                       </div>
                       
@@ -1013,13 +1029,14 @@ export default function AdminMovieManagement() {
                     </TableRow>
                   ) : (
                     filteredMovies.map((movie) => (
-                      <TableRow key={movie._id} className="hover:bg-muted/50">
+                      <TableRow key={movie.id} className="hover:bg-muted/50">
                         <TableCell>
                           <div className="relative w-12 h-16 overflow-hidden rounded-md border">
-                            <Image
+                             <Image
                               src={getMovieImage(movie)}
                               alt={movie.title}
-                              fill
+                              width={48}
+                              height={64}
                               className="object-cover"
                             />
                           </div>
@@ -1028,7 +1045,7 @@ export default function AdminMovieManagement() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {movie.genre && movie.genre.split(',').map((g, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
+                              <Badge key={`${movie.id}-genre-${idx}`} variant="outline" className="text-xs">
                                 {g.trim()}
                               </Badge>
                             ))}
@@ -1251,7 +1268,8 @@ export default function AdminMovieManagement() {
                     <Image
                       src={getMovieImage(selectedMovie)}
                       alt={selectedMovie.title}
-                      fill
+                      width={56}
+                      height={80}
                       className="object-cover"
                     />
                   </div>

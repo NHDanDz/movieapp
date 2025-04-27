@@ -158,19 +158,26 @@ class User {
       let query = 'SELECT * FROM Users WHERE ';
       const request = pool.request();
       
-      // Xây dựng điều kiện truy vấn dựa trên các tiêu chí
+      // Xây dựng điều kiện truy vấn
       const conditions = [];
       Object.keys(criteria).forEach((key, index) => {
         const paramName = `param${index}`;
         
-        // Chuyển đổi key từ camelCase sang PascalCase
-        const dbKey = key.charAt(0).toUpperCase() + key.slice(1);
+        // Điều chỉnh tên cột cho đúng với SQL Server (format PascalCase)
+        let dbKey = key;
+        if (key === 'username') dbKey = 'Username';
+        else if (key === 'email') dbKey = 'Email';
+        else if (key === 'facebook') dbKey = 'FacebookID';
+        else if (key === 'google') dbKey = 'GoogleID';
         
         conditions.push(`${dbKey} = @${paramName}`);
         request.input(paramName, criteria[key]);
       });
       
       query += conditions.join(' AND ');
+      
+      console.log("SQL Query:", query); // Log để debug
+      
       const result = await request.query(query);
       
       if (result.recordset.length === 0) return null;
@@ -184,15 +191,26 @@ class User {
 
   static async findByCredentials(username, password) {
     try {
+      console.log("Đang tìm user với username:", username);
       const user = await this.findOne({ username });
+      console.log("Kết quả tìm user:", user ? "Tìm thấy" : "Không tìm thấy");
+      
       if (!user) throw new Error('Unable to login');
-
+      
+      if (!user.password) {
+        console.log("User không có mật khẩu (có thể là tài khoản social)");
+        throw new Error('Unable to login');
+      }
+      
+      console.log("Đang so sánh mật khẩu...");
       const isMatch = await bcrypt.compare(password, user.password);
+      console.log("Kết quả so sánh mật khẩu:", isMatch);
+      
       if (!isMatch) throw new Error('Unable to login');
-
+  
       return user;
     } catch (error) {
-      console.error('Error in findByCredentials:', error);
+      console.error('Chi tiết lỗi đăng nhập:', error);
       throw error;
     }
   }

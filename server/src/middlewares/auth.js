@@ -24,7 +24,7 @@ const enhance = async (req, res, next) => {
     const decoded = jwt.verify(token, 'mySecret');
     const user = await User.findByToken(decoded.id, token);
     
-    if (!user || user.role !== 'superadmin') throw new Error();
+    if (!user || user.role !== 'admin') throw new Error();
     
     req.token = token;
     req.user = user;

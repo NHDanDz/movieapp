@@ -75,6 +75,7 @@ router.get('/movies/:id', async (req, res) => {
 router.put('/movies/:id', auth.enhance, async (req, res) => {
   const _id = req.params.id;
   const updates = Object.keys(req.body);
+  console.log(req)
   const allowedUpdates = [
     'title',
     'image',

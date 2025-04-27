@@ -57,8 +57,9 @@ export const AuthProvider = ({ children }) => {
         router.push('/')
         return true
       }
-    } catch (error) {
-      toast({
+    } catch (error) { 
+      console.log('Chi tiết lỗi:', error.response?.data);
+          toast({
         variant: "destructive",
         title: "Đăng nhập thất bại",
         description: error.response?.data?.error?.message || "Tên đăng nhập hoặc mật khẩu không đúng",
