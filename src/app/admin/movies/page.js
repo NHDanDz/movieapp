@@ -282,85 +282,151 @@ export default function AdminMovieManagement() {
     }
     reader.readAsDataURL(file)
   }
+// Sửa lại hàm handleUploadImage trong component phim
+const handleUploadImage = async (movieId) => {
+  if (!imageFile) return null;
   
+  try {
+    setSubmitting(true);
+    console.log('Uploading image for movie ID:', movieId);
+    
+    // Tạo FormData để gửi file
+    const formData = new FormData();
+    formData.append('file', imageFile);
+    
+    // Log để kiểm tra formData
+    console.log('FormData created with file:', imageFile.name);
+    
+    // Đảm bảo movieId là string
+    const id = String(movieId);
+    
+    // Gọi API upload ảnh
+    const response = await movieApi.uploadPhoto(id, formData);
+    
+    if (response.data && response.data.movie) {
+      console.log('Upload successful, new image path:', response.data.movie.image);
+      // Trả về đường dẫn ảnh mới
+      return response.data.movie.image;
+    }
+    return null;
+  } catch (error) {
+    console.error('Lỗi khi tải ảnh:', error);
+    toast({
+      variant: "destructive",
+      title: "Lỗi",
+      description: "Không thể tải ảnh lên. Vui lòng thử lại sau.",
+    });
+    return null;
+  }
+};
   // Add movie
   const handleAddMovie = async (data) => {
     try {
-      setSubmitting(true)
+      setSubmitting(true);
       
-      // TODO: Implement API call to add movie
-      // const response = await movieApi.create(data)
-      
-      // Mô phỏng thêm phim
-      const newMovie = {
-        id: `movie-${Date.now()}`,
+      // Chuẩn bị dữ liệu để gửi lên API
+      const movieData = {
         ...data,
         releaseDate: data.releaseDate.toISOString(),
         endDate: data.endDate.toISOString(),
-        image: imagePreview || '/images/default-movie.jpg'
+      };
+      
+      // Gọi API để thêm phim mới
+      const response = await movieApi.create(movieData);
+      
+      // Nếu có file ảnh, upload sau khi tạo phim thành công
+      if (imageFile && response.data && response.data.id) {
+        const imageUrl = await handleUploadImage(response.data.id);
+        
+        // Nếu upload ảnh thành công, cập nhật thông tin phim
+        if (imageUrl) {
+          await movieApi.update(response.data.id, { image: imageUrl });
+          response.data.image = imageUrl;
+        }
       }
       
-      setMovies([...movies, newMovie])
+      // Cập nhật state
+      setMovies([...movies, response.data]);
       
       toast({
         title: "Thêm phim thành công",
         description: `Phim "${data.title}" đã được thêm vào hệ thống.`
-      })
+      });
       
-      setShowAddDrawer(false)
-      form.reset()
-      setImagePreview('')
-      setImageFile(null)
+      setShowAddDrawer(false);
+      form.reset();
+      setImagePreview('');
+      setImageFile(null);
+      setShowImagePreview(false);
     } catch (error) {
-      console.error('Error adding movie:', error)
+      console.error('Error adding movie:', error);
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: "Không thể thêm phim. Vui lòng thử lại sau.",
-      })
+      });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
   
   // Edit movie
   const handleEditMovie = async (data) => {
     try {
-      setSubmitting(true)
+      setSubmitting(true);
       
-      // Gọi API để cập nhật
- 
-      const response = await movieApi.update(selectedMovie.id, data)
-       // Cập nhật state sau khi API thành công
+      // Nếu có file ảnh mới, upload trước
+      let imageUrl = null;
+      if (imageFile && selectedMovie) {
+        imageUrl = await handleUploadImage(selectedMovie.id);
+      }
+      
+      // Chuẩn bị dữ liệu để gửi lên API
+      const movieData = {
+        ...data,
+        releaseDate: data.releaseDate.toISOString(),
+        endDate: data.endDate.toISOString(),
+      };
+      
+      // Nếu có ảnh mới đã upload thành công, cập nhật URL ảnh
+      if (imageUrl) {
+        movieData.image = imageUrl;
+      }
+      
+      // Gọi API để cập nhật thông tin phim
+      const response = await movieApi.update(selectedMovie.id, movieData);
+      
+      // Cập nhật state sau khi API thành công
       const updatedMovies = movies.map(movie => {
         if (movie.id === selectedMovie.id) {
-          return response.data // hoặc sử dụng dữ liệu từ response
+          return response.data;
         }
-        return movie
-      })
+        return movie;
+      });
       
-      setMovies(updatedMovies)
+      setMovies(updatedMovies);
       
       toast({
         title: "Cập nhật phim thành công",
         description: `Phim "${data.title}" đã được cập nhật.`
-      })
+      });
       
-      setShowEditDrawer(false)
-      setSelectedMovie(null)
-      setImagePreview('')
-      setImageFile(null)
+      setShowEditDrawer(false);
+      setSelectedMovie(null);
+      setImagePreview('');
+      setImageFile(null);
+      setShowImagePreview(false);
     } catch (error) {
-      console.error('Error updating movie:', error)
+      console.error('Error updating movie:', error);
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: "Không thể cập nhật phim. Vui lòng thử lại sau.",
-      })
+      });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
   
   // Delete movie
   const handleDeleteMovie = async () => {
