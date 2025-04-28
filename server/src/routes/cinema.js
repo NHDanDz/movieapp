@@ -17,26 +17,55 @@ router.post('/cinemas', auth.enhance, async (req, res) => {
   }
 });
 
-router.post('/cinemas/photo/:id', upload('cinemas').single('file'), async (req, res, next) => {
-  const url = `${req.protocol}://${req.get('host')}`;
-  const { file } = req;
-  const movieId = req.params.id;
-  try {
-    if (!file) {
-      const error = new Error('Please upload a file');
-      error.httpStatusCode = 400;
-      return next(error);
+router.post(
+  '/cinemas/photo/:id',
+  auth.enhance,
+  upload('cinemas').single('file'),
+  async (req, res, next) => {
+    try {
+      const { file } = req;
+      const cinemaId = req.params.id;
+      
+      if (!file) {
+        const error = new Error('Vui lòng tải lên một file');
+        error.httpStatusCode = 400;
+        return next(error);
+      }
+      
+      const cinema = await Cinema.findById(cinemaId);
+      if (!cinema) return res.sendStatus(404);
+
+      // Xóa ảnh cũ nếu có và không phải link ngoài
+      if (cinema.image && !cinema.image.includes('http')) {
+        try {
+          const oldImagePath = path.join(__dirname, '../../public', cinema.image);
+          console.log('Checking old cinema image at:', oldImagePath);
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+            console.log('Deleted old cinema image:', oldImagePath);
+          }
+        } catch (err) {
+          console.error('Error deleting old cinema image:', err);
+          // Tiếp tục xử lý ngay cả khi không thể xóa ảnh cũ
+        }
+      }
+      
+      // Lưu đường dẫn tương đối vào database
+      const relativePath = `/cinemas/${cinemaId}/${file.filename}`;
+      console.log('New cinema image path:', relativePath);
+      console.log('Uploaded file info:', file);
+      
+      cinema.image = relativePath;
+      
+      await cinema.save();
+      res.send({ cinema, file });
+    } catch (e) {
+      console.error('Error in cinema upload handler:', e);
+      res.status(400).send(e);
     }
-    const cinema = await Cinema.findById(movieId);
-    if (!cinema) return res.sendStatus(404);
-    cinema.image = `${url}/${file.path}`;
-    await cinema.save();
-    res.send({ cinema, file });
-  } catch (e) {
-    console.log(e);
-    res.sendStatus(400).send(e);
   }
-});
+);
+
 
 // Get all cinemas
 router.get('/cinemas', async (req, res) => {

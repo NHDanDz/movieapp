@@ -86,7 +86,7 @@ export default function MovieDetailPage() {
               {showtimes.length > 0 ? (
                 <CinemaShowtimes 
                   showtimes={showtimes} 
-                  movieId={movie._id}
+                  movieId={movie.id}
                 />
               ) : (
                 <div className="text-center py-10">

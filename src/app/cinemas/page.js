@@ -93,8 +93,8 @@ export default function CinemasPage() {
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả thành phố</SelectItem>
-              {cities.map((city, index) => (
+            <SelectItem key="all" value="all">Tất cả thành phố</SelectItem>
+                {cities.map((city, index) => (
                 <SelectItem key={index} value={city} className="capitalize">
                   {city}
                 </SelectItem>

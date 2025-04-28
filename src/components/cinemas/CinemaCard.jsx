@@ -60,7 +60,7 @@ const CinemaCard = ({ cinema, className = '' }) => {
           </div>
         </div>
         
-        <Link href={`/cinemas/${cinema._id}`}>
+        <Link href={`/cinemas/${cinema.id}`}>
           <Button 
             className="w-full"
             variant="outline"

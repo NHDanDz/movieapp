@@ -7,7 +7,7 @@ const router = new express.Router();
 // Create a showtime
 router.post('/showtimes', auth.enhance, async (req, res) => {
   const showtime = new Showtime(req.body);
-  try {
+   try {
     await showtime.save();
     res.status(201).send(showtime);
   } catch (e) {

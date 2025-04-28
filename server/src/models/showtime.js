@@ -3,14 +3,14 @@ const { sql, poolPromise } = require('../db/mssql');
 
 class Showtime {
   constructor(data) {
-    this.id = data.ID;
-    this.startAt = data.StartAt;
-    this.startDate = data.StartDate;
-    this.endDate = data.EndDate;
-    this.movieId = data.MovieID;
-    this.roomId = data.RoomID;
-    this.createdAt = data.CreatedAt;
-    this.updatedAt = data.UpdatedAt;
+    this.id = data.id || data.ID;
+    this.startAt = data.startAt || data.StartAt;
+    this.startDate = data.startDate || data.StartDate;
+    this.endDate = data.endDate || data.EndDate;
+    this.movieId = data.movieId || data.MovieID;
+    this.roomId = data.roomId || data.RoomID;
+    this.createdAt = data.createdAt || data.CreatedAt;
+    this.updatedAt = data.updatedAt || data.UpdatedAt;
   }
 
   // Lưu suất chiếu vào DB

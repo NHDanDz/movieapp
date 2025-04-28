@@ -6,10 +6,11 @@ import { showtimeApi, movieApi, cinemaApi, roomApi } from '@/lib/api'
 import { formatDate, formatTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"; 
+
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import { 
-  Calendar, 
+import {  
   Search, 
   Plus, 
   Pencil, 
@@ -90,7 +91,7 @@ import { z } from 'zod'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-// Form schema cho suất chiếu
+  // Form schema cho suất chiếu
 const showtimeSchema = z.object({
   movieId: z.coerce.number().min(1, 'Phim là bắt buộc'),
   roomId: z.coerce.number().min(1, 'Phòng chiếu là bắt buộc'),
@@ -304,8 +305,16 @@ export default function AdminShowtimeManagement() {
   
   // Handle time change for conflict check
   const handleTimeChange = (startAt) => {
-    form.setValue('startAt', startAt)
-    checkShowtimeConflict()
+    if (startAt) {
+      form.setValue('startAt', startAt);
+      checkShowtimeConflict();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Vui lòng chọn giờ chiếu"
+      });
+    }
   }
   
   // Handle date change for conflict check
@@ -399,6 +408,18 @@ export default function AdminShowtimeManagement() {
     try {
       setSubmitting(true)
       
+      console.log("Form data trước khi xử lý:", data);
+      
+      if (!data.startAt || data.startAt.trim() === '') {
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Giờ chiếu không được để trống"
+        });
+        setSubmitting(false);
+        return;
+      }
+      
       // Kiểm tra xung đột một lần nữa trước khi thêm
       // Thực hiện kiểm tra nội bộ
       const startDate = data.startDate.toISOString().split('T')[0]
@@ -454,23 +475,27 @@ export default function AdminShowtimeManagement() {
         })
         return
       }
+      const formatSQLDate = (dateObj) => {
+        // Format: YYYY-MM-DD (SQL Server format)
+        return dateObj.toISOString().split('T')[0];
+      };
       
       // Chuẩn bị dữ liệu để gửi lên API
       const showtimeData = {
         movieId: Number(data.movieId),
         roomId: Number(data.roomId),
-        startDate: data.startDate.toISOString().split('T')[0],
-        endDate: data.endDate.toISOString().split('T')[0],
-        startAt: data.startAt
-      }
-      
-      console.log("Dữ liệu gửi lên API:", showtimeData)
-      
+        startDate: formatSQLDate(data.startDate),
+        endDate: formatSQLDate(data.endDate),
+        startAt: data.startAt.trim()
+      };
+      console.log("Dữ liệu gửi lên API (kiểm tra cuối):", JSON.stringify(showtimeData));
+
+       
       // Gọi API để thêm suất chiếu mới
       const response = await showtimeApi.create(showtimeData)
       
       // Cập nhật state
-      setShowtimes([...showtimes, response.data])
+      setShowtimes(prevShowtimes => [...prevShowtimes, response.data]);
       
       toast({
         title: "Thêm suất chiếu thành công",
@@ -484,6 +509,7 @@ export default function AdminShowtimeManagement() {
       console.error('Lỗi thêm suất chiếu:', error)
       if (error.response && error.response.data) {
         console.error('Chi tiết lỗi:', error.response.data)
+        console.error('Request data:', error.response.request)
       }
       toast({
         variant: "destructive",
@@ -499,6 +525,18 @@ export default function AdminShowtimeManagement() {
   const handleEditShowtime = async (data) => {
     try {
       setSubmitting(true)
+      
+      console.log("Form data trước khi xử lý:", data);
+      
+      if (!data.startAt || data.startAt.trim() === '') {
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Giờ chiếu không được để trống"
+        });
+        setSubmitting(false);
+        return;
+      }
       
       // Kiểm tra xung đột một lần nữa trước khi cập nhật
       // Thực hiện kiểm tra nội bộ
@@ -559,10 +597,15 @@ export default function AdminShowtimeManagement() {
       
       // Chuẩn bị dữ liệu để gửi lên API
       const showtimeData = {
-        ...data,
+        id: selectedShowtime.id,
+        movieId: Number(data.movieId),
+        roomId: Number(data.roomId),
         startDate: data.startDate.toISOString().split('T')[0],
         endDate: data.endDate.toISOString().split('T')[0],
+        startAt: data.startAt.trim()
       }
+      
+      console.log("Dữ liệu cập nhật:", showtimeData)
       
       // Gọi API để cập nhật suất chiếu
       const response = await showtimeApi.update(selectedShowtime.id, showtimeData)
@@ -587,10 +630,14 @@ export default function AdminShowtimeManagement() {
       setConflictResult(null)
     } catch (error) {
       console.error('Lỗi cập nhật suất chiếu:', error)
+      if (error.response && error.response.data) {
+        console.error('Chi tiết lỗi:', error.response.data)
+        console.error('Request data:', error.response.request)
+      }
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể cập nhật suất chiếu. Vui lòng thử lại sau."
+        description: error.response?.data?.message || "Không thể cập nhật suất chiếu. Vui lòng thử lại sau."
       })
     } finally {
       setSubmitting(false)
@@ -744,28 +791,23 @@ export default function AdminShowtimeManagement() {
             </FormControl>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0 bg-white shadow-lg rounded-lg border" align="start">
-            <div className="p-2 bg-primary/5 border-b">
-              <div className="text-sm font-medium text-center">{label}</div>
-            </div>
             <Calendar
               mode="single"
               selected={field.value}
               onSelect={(date) => {
-                field.onChange(date)
-                if (onDateChange) onDateChange(date)
+                field.onChange(date);
+                if (onDateChange) onDateChange(date);
               }}
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-              initialFocus
-              className="rounded-md border-0"
             />
             <div className="p-2 border-t flex justify-between">
               <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => {
-                  const today = new Date()
-                  field.onChange(today)
-                  if (onDateChange) onDateChange(today)
+                  const today = new Date();
+                  field.onChange(today);
+                  if (onDateChange) onDateChange(today);
                 }}
                 className="text-xs h-7"
               >
@@ -775,8 +817,8 @@ export default function AdminShowtimeManagement() {
                 variant="ghost" 
                 size="sm"
                 onClick={() => {
-                  field.onChange(undefined)
-                  if (onDateChange) onDateChange(undefined)
+                  field.onChange(undefined);
+                  if (onDateChange) onDateChange(undefined);
                 }}
                 className="text-xs h-7 text-destructive"
               >
@@ -787,7 +829,7 @@ export default function AdminShowtimeManagement() {
         </Popover>
         <FormMessage />
       </FormItem>
-    )
+    );
   }
   
   // Form suất chiếu chung cho cả thêm và sửa
@@ -845,10 +887,10 @@ export default function AdminShowtimeManagement() {
                 </Select>
                 <FormDescription>
                   {movieDuration > 0 && (
-                    <div className="text-xs flex items-center mt-1">
+                    <span className="text-xs flex items-center mt-1">
                       <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
                       Thời lượng: {movieDuration} phút
-                    </div>
+                    </span>
                   )}
                 </FormDescription>
                 <FormMessage />
@@ -1028,8 +1070,7 @@ export default function AdminShowtimeManagement() {
     <div className="container mx-auto py-6 space-y-6">
       <Card className="shadow-sm border-t-4 border-t-primary">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-2xl font-bold flex items-center">
-            <Calendar className="h-6 w-6 mr-2" />
+          <CardTitle className="text-2xl font-bold flex items-center"> 
             Quản lý suất chiếu
           </CardTitle>
           <Button
@@ -1357,13 +1398,13 @@ export default function AdminShowtimeManagement() {
               <div className="bg-gradient-to-r from-black to-gray-600 px-6 py-4 text-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-bold flex items-center">
+                    <DialogTitle className="text-xl font-bold flex items-center text-white">
                       <Plus className="h-5 w-5 mr-2" />
                       Thêm suất chiếu mới
-                    </h2>
-                    <p className="text-white/80 text-sm mt-1">
+                    </DialogTitle>
+                    <DialogDescription className="text-white/80 text-sm mt-1">
                       Nhập thông tin chi tiết về suất chiếu mới
-                    </p>
+                    </DialogDescription>
                   </div>
                   <Button
                     variant="ghost"
@@ -1392,7 +1433,7 @@ export default function AdminShowtimeManagement() {
               <Button 
                 type="submit"
                 className="min-w-[120px]"
-                disabled={submitting || (conflictResult && conflictResult.hasConflict)}
+                disabled={submitting || (conflictResult && conflictResult.hasConflict) || !form.getValues('startAt')}
                 onClick={form.handleSubmit(handleAddShowtime)}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -1442,7 +1483,7 @@ export default function AdminShowtimeManagement() {
             <Button 
               type="submit"
               className="min-w-[120px]"
-              disabled={submitting || (conflictResult && conflictResult.hasConflict)}
+              disabled={submitting || (conflictResult && conflictResult.hasConflict) || !form.getValues('startAt')}
               onClick={form.handleSubmit(handleEditShowtime)}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -1457,10 +1498,10 @@ export default function AdminShowtimeManagement() {
         <DialogContent className="max-w-md p-0 bg-white overflow-hidden rounded-xl shadow-xl border-none">
           <DialogHeader className="bg-red-500 px-6 py-4 text-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center">
+              <DialogTitle className="text-xl font-bold flex items-center text-white">
                 <Trash2 className="h-5 w-5 mr-2" />
                 Xác nhận xóa suất chiếu
-              </h2>
+              </DialogTitle>
               <Button
                 variant="ghost"
                 size="icon"
