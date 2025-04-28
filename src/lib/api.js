@@ -25,16 +25,16 @@ api.interceptors.request.use(
 
 // API functions for Movies
 export const movieApi = {
-  getAll: () => api.get('/movies'),
-  getById: (id) => api.get(`/movies/${id}`),
-  getNowShowing: () => api.get('/movies?category=nowShowing'),
-  getComingSoon: () => api.get('/movies?category=comingSoon'),
-  getSuggested: (username) => api.get(`/movies/usermodeling/${username}`),
+  getAll: () => api.get('/movies1'),
+  getById: (id) => api.get(`/movies1/${id}`),
+  getNowShowing: () => api.get('/movies1?category=nowShowing'),
+  getComingSoon: () => api.get('/movies1?category=comingSoon'),
+  getSuggested: (username) => api.get(`/movies1/usermodeling/${username}`),
   // Thêm các phương thức mới cho quản lý phim
-  create: (data) => api.post('/movies', data),
-  update: (id, data) => api.put(`/movies/${id}`, data),
-  delete: (id) => api.delete(`/movies/${id}`),
-  uploadPhoto: (id, formData) => api.post(`/movies/photo/${id}`, formData, {
+  create: (data) => api.post('/movies1', data),
+  update: (id, data) => api.put(`/movies1/${id}`, data),
+  delete: (id) => api.delete(`/movies1/${id}`),
+  uploadPhoto: (id, formData) => api.post(`/movies1/photo/${id}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }

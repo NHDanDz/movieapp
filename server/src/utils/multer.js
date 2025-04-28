@@ -8,7 +8,7 @@ const storage = folderName =>
       // Lấy id từ param
       const id = req.params.id;
       // Tạo đường dẫn đến thư mục lưu file
-      const dir = path.join(__dirname, '../../public', folderName, id);
+      const dir = path.join(__dirname, '../../../public', folderName, id);
       
       // Kiểm tra và tạo thư mục nếu chưa tồn tại
       if (!fs.existsSync(dir)) {

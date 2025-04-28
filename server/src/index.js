@@ -26,7 +26,7 @@ app.use(cors());
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
-app.use('/movies', express.static(path.join(__dirname, '../../public/movies')));
+app.use('/movies', express.static(path.join(__dirname, '../../../public/movies1')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Middleware để log request để dễ debug

@@ -1179,9 +1179,9 @@ const handleUploadImage = async (movieId) => {
       <Dialog open={showAddDrawer} onOpenChange={setShowAddDrawer}>
         <DialogContent className="!max-w-[900px] p-0 bg-white overflow-hidden rounded-xl shadow-xl border-none">
            <div className="flex flex-col !max-h-[90vh]">
-           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 text-white">
+           <DialogHeader className="bg-gradient-to-r from-black to-gray-600  text-white">
 
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 text-white">
+          <div className="bg-gradient-to-r from-black to-gray-600 px-6 py-4 text-white">
            <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold flex items-center">

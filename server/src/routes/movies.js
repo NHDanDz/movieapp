@@ -9,7 +9,7 @@ const path = require('path');
 const router = new express.Router();
 
 // Create a movie
-router.post('/movies', auth.enhance, async (req, res) => {
+router.post('/movies1', auth.enhance, async (req, res) => {
   const movie = new Movie(req.body);
   try {
     await movie.save();
@@ -20,7 +20,7 @@ router.post('/movies', auth.enhance, async (req, res) => {
 });
 
 router.post(
-  '/movies/photo/:id',
+  '/movies1/photo/:id',
   auth.enhance,
   upload('movies').single('file'),
   async (req, res, next) => {
@@ -69,7 +69,7 @@ router.post(
   }
 );
 // Get all movies
-router.get('/movies', async (req, res) => {
+router.get('/movies1', async (req, res) => {
   try {
     const movies = await Movie.find({});
     res.send(movies);
@@ -79,7 +79,7 @@ router.get('/movies', async (req, res) => {
 });
 
 // Get movie by id
-router.get('/movies/:id', async (req, res) => {
+router.get('/movies1/:id', async (req, res) => {
   const _id = req.params.id;
 
   try {
@@ -92,7 +92,7 @@ router.get('/movies/:id', async (req, res) => {
 });
 
 // Update movie by id
-router.put('/movies/:id', auth.enhance, async (req, res) => {
+router.put('/movies1/:id', auth.enhance, async (req, res) => {
   const _id = req.params.id;
   const updates = Object.keys(req.body);
   console.log(req)
@@ -123,7 +123,7 @@ router.put('/movies/:id', auth.enhance, async (req, res) => {
 });
 
 // Delete movie by id
-router.delete('/movies/:id', auth.enhance, async (req, res) => {
+router.delete('/movies1/:id', auth.enhance, async (req, res) => {
   const _id = req.params.id;
   try {
     const movie = await Movie.findByIdAndDelete(_id);
@@ -134,7 +134,7 @@ router.delete('/movies/:id', auth.enhance, async (req, res) => {
 });
 
 // Movies User modeling (Get Movies Suggestions)
-router.get('/movies/usermodeling/:username', async (req, res) => {
+router.get('/movies1/usermodeling/:username', async (req, res) => {
   const { username } = req.params;
   try {
     const cinemasUserModeled = await userModeling.moviesUserModeling(username);
