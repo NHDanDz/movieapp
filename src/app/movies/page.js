@@ -93,7 +93,7 @@ export default function MoviesPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
                 {filteredAllMovies.map((movie) => (
-                  <MovieCard key={movie._id} movie={movie} />
+                  <MovieCard key={movie.id} movie={movie} />
                 ))}
               </div>
             )}
@@ -112,7 +112,7 @@ export default function MoviesPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
                 {filteredNowShowing.map((movie) => (
-                  <MovieCard key={movie._id} movie={movie} />
+                  <MovieCard key={movie.id} movie={movie} />
                 ))}
               </div>
             )}
@@ -131,7 +131,7 @@ export default function MoviesPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
                 {filteredComingSoon.map((movie) => (
-                  <MovieCard key={movie._id} movie={movie} />
+                  <MovieCard key={movie.id} movie={movie} />
                 ))}
               </div>
             )}

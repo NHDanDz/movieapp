@@ -118,7 +118,7 @@ const MovieCarousel = ({
       <div className="relative">
         <Slider {...settings}>
           {movies.map((movie) => (
-            <div key={movie._id} className="px-2">
+            <div key={movie.id} className="px-2">
               <MovieCard movie={movie} />
             </div>
           ))}

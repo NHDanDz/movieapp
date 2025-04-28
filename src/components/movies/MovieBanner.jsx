@@ -87,14 +87,14 @@ const MovieBanner = ({ movie, height = '100%', fullDescription = false }) => {
           
           <div className="flex flex-wrap gap-4 mt-6">
             {fullDescription ? (
-              <Link href={`/movies/${movie._id}/booking`}>
+              <Link href={`/movies/${movie.id}/booking`}>
                 <Button className="gap-2 px-6">
                   Đặt vé ngay
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             ) : (
-              <Link href={`/movies/${movie._id}`}>
+              <Link href={`/movies/${movie.id}`}>
                 <Button variant="secondary" className="gap-2 px-6">
                   Xem chi tiết
                   <ArrowRight className="h-4 w-4" />

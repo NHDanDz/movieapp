@@ -18,7 +18,7 @@ const MovieCard = ({ movie, className = '' }) => {
   
   return (
     <Link 
-      href={`/movies/${movie._id}`}
+      href={`/movies/${movie.id}`}
       className={`block ${className}`}
     >
       <Card 

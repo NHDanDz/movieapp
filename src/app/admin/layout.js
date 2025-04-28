@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
  
+// Import CSS Admin riêng
+import './admin.css'
+ 
 import { 
   Film, 
   Users, 
