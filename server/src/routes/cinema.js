@@ -63,20 +63,50 @@ router.get('/cinemas/:id', async (req, res) => {
 // Update cinema by id
 router.patch('/cinemas/:id', auth.enhance, async (req, res) => {
   const _id = req.params.id;
+  console.log('==== SERVER LOG - UPDATE CINEMA ====');
+  console.log('Cinema ID from params:', _id);
+  console.log('Request body:', req.body);
+  console.log('Request headers:', req.headers);
+  
   const updates = Object.keys(req.body);
-  const allowedUpdates = ['name', 'ticketPrice', 'city', 'seats', 'seatsAvailable'];
+  const allowedUpdates = ['name', 'ticketPrice', 'city', 'seats', 'seatsAvailable', 'image'];
+  console.log('Updates requested:', updates);
+  
   const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
+  console.log('Is valid operation:', isValidOperation);
 
-  if (!isValidOperation) return res.status(400).send({ error: 'Invalid updates!' });
+  if (!isValidOperation) {
+    console.log('Invalid updates requested!', updates);
+    return res.status(400).send({ 
+      error: 'Invalid updates!',
+      allowedUpdates,
+      receivedUpdates: updates
+    });
+  }
 
   try {
     const cinema = await Cinema.findById(_id);
-    updates.forEach((update) => (cinema[update] = req.body[update]));
+    console.log('Found cinema:', cinema);
+    
+    if (!cinema) {
+      console.log('Cinema not found with ID:', _id);
+      return res.sendStatus(404);
+    }
+    
+    updates.forEach((update) => {
+      console.log(`Updating ${update} from ${cinema[update]} to ${req.body[update]}`);
+      cinema[update] = req.body[update];
+    });
+    
     await cinema.save();
-    if (!cinema) return res.sendStatus(404);
+    console.log('Cinema updated successfully:', cinema);
     return res.send(cinema);
   } catch (e) {
-    return res.status(400).send(e);
+    console.error('Server error updating cinema:', e);
+    return res.status(400).send({
+      error: e.message,
+      details: e.stack
+    });
   }
 });
 

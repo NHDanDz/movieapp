@@ -16,6 +16,7 @@ const cinemaRouter = require('./routes/cinema');
 const showtimeRouter = require('./routes/showtime');
 const reservationRouter = require('./routes/reservation');
 const invitationsRouter = require('./routes/invitations');
+const roomRouter = require('./routes/rooms'); // Thêm routes cho phòng chiếu
 
 const app = express();
 app.disable('x-powered-by');
@@ -42,6 +43,7 @@ app.use(cinemaRouter);
 app.use(showtimeRouter);
 app.use(reservationRouter);
 app.use(invitationsRouter);
+app.use(roomRouter); // Sử dụng routes cho phòng chiếu
 
 // Thêm route test API
 app.get('/api/test', (req, res) => res.send('API server is running'));

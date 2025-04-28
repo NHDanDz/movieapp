@@ -95,6 +95,20 @@ export const userApi = {
   deleteUser: (id) => api.delete(`/users/${id}`)
 }
  
+
+export const roomApi = {
+  getAll: () => api.get('/rooms'),
+  getByCinemaId: (cinemaId) => api.get(`/rooms?cinemaId=${cinemaId}`),
+  getById: (id) => api.get(`/rooms/${id}`),
+  create: (data) => api.post('/rooms', data),
+  update: (id, data) => api.patch(`/rooms/${id}`, data),
+  delete: (id) => api.delete(`/rooms/${id}`),
+  getSeats: (roomId) => api.get(`/rooms/${roomId}/seats`),
+  addSeats: (roomId, seats) => api.post(`/rooms/${roomId}/seats`, { seats }),
+  checkSeatsAvailability: (roomId, showtimeId, seats) => 
+    api.post(`/rooms/${roomId}/check-seats`, { showtimeId, seats })
+}
+
 // Interceptor để thêm token vào mỗi request nếu có
 api.interceptors.request.use(
   (config) => {
