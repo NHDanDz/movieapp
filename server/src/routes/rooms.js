@@ -172,11 +172,32 @@ router.post('/rooms/:id/check-seats', async (req, res) => {
     const roomId = req.params.id;
     const { showtimeId, seats } = req.body;
     
-    if (!showtimeId || !seats || !Array.isArray(seats)) {
-      return res.status(400).send({ error: 'Thông tin không hợp lệ' });
+    if (!showtimeId) {
+      return res.status(400).send({ error: 'Thiếu thông tin suất chiếu' });
     }
     
-    // Kiểm tra ghế
+    // Lấy tất cả ghế đã đặt nếu seats là mảng rỗng
+    if (!seats || seats.length === 0) {
+      // Lấy danh sách ghế đã đặt
+      const result = await pool.request()
+        .input('roomId', sql.Int, parseInt(roomId))
+        .input('showtimeId', sql.Int, parseInt(showtimeId))
+        .query(`
+          SELECT rs.RowName, rs.SeatNumber
+          FROM ReservationSeats rs
+          JOIN Reservations r ON rs.ReservationID = r.ID
+          WHERE r.RoomID = @roomId AND r.ShowtimeID = @showtimeId
+        `);
+      
+      const reservedSeats = result.recordset.map(seat => `${seat.RowName}-${seat.SeatNumber}`);
+      
+      return res.status(200).send({ 
+        available: true,
+        reservedSeats
+      });
+    }
+    
+    // Kiểm tra ghế được chỉ định
     const result = await Room.checkSeatsAvailability(
       parseInt(roomId),
       parseInt(showtimeId),
@@ -189,5 +210,4 @@ router.post('/rooms/:id/check-seats', async (req, res) => {
     res.status(500).send({ error: 'Lỗi khi kiểm tra ghế' });
   }
 });
-
 module.exports = router;

@@ -60,7 +60,7 @@ export const cinemaApi = {
 // API functions for Showtimes
 export const showtimeApi = {
   getAll: () => api.get('/showtimes'),
-  getByMovie: (movieId) => api.get(`/showtimes?movieId=${movieId}`),
+  getByMovie: (movieId) => api.get(`/showtimes/movie/${movieId}`),
   // Thêm các phương thức mới cho quản lý lịch chiếu
   create: (data) => api.post('/showtimes', data),
   update: (id, data) => api.patch(`/showtimes/${id}`, data),
@@ -105,8 +105,9 @@ export const roomApi = {
   delete: (id) => api.delete(`/rooms/${id}`),
   getSeats: (roomId) => api.get(`/rooms/${roomId}/seats`),
   addSeats: (roomId, seats) => api.post(`/rooms/${roomId}/seats`, { seats }),
-  checkSeatsAvailability: (roomId, showtimeId, seats) => 
-    api.post(`/rooms/${roomId}/check-seats`, { showtimeId, seats })
+  checkSeatsAvailability: (roomId, data) => 
+    api.post(`/rooms/${roomId}/check-seats`, data)
+  
 }
 
 // Interceptor để thêm token vào mỗi request nếu có

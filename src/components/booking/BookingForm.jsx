@@ -45,60 +45,59 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
   
   // Khi chọn phòng
   const handleRoomChange = (value) => {
-    setSelectedRoom(value)
-    setSelectedDate(null)
-    setSelectedTime(null)
-    setSelectedShowtime(null)
+    setSelectedRoom(value);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setSelectedShowtime(null);
     
     // Lọc các suất chiếu cho phòng đã chọn
     if (value) {
+      // Lưu ý cấu trúc dữ liệu từ API - RoomID phải viết hoa theo DB
       const filtered = showtimes.filter(
-        showtime => showtime.RoomID === parseInt(value) || showtime.roomId === parseInt(value)
-      )
-      setFilteredShowtimes(filtered)
+        showtime => showtime.RoomID === parseInt(value)
+      );
+      setFilteredShowtimes(filtered);
       
       // Lấy danh sách ngày chiếu từ các suất chiếu đã lọc
       const dates = [...new Set(filtered.map(showtime => 
-        showtime.StartDate || showtime.startDate
-      ))].sort()
+        showtime.StartDate
+      ))].sort();
       
-      setAvailableDates(dates)
+      setAvailableDates(dates);
     } else {
-      setFilteredShowtimes([])
-      setAvailableDates([])
+      setFilteredShowtimes([]);
+      setAvailableDates([]);
     }
-  }
+  };
   
-  // Khi chọn ngày
+  // Khi chọn ngày - cũng cần điều chỉnh tương tự
   const handleDateChange = (value) => {
-    setSelectedDate(value)
-    setSelectedTime(null)
-    setSelectedShowtime(null)
+    setSelectedDate(value);
+    setSelectedTime(null);
+    setSelectedShowtime(null);
     
     // Lọc các suất chiếu cho ngày đã chọn
     if (value) {
       const timeSlots = filteredShowtimes
-        .filter(showtime => 
-          (showtime.StartDate === value || showtime.startDate === value)
-        )
+        .filter(showtime => showtime.StartDate === value)
         .map(showtime => ({
-          id: showtime.ID || showtime.id,
-          time: showtime.StartAt || showtime.startAt
+          id: showtime.ID,
+          time: showtime.StartAt
         }))
         .sort((a, b) => {
           // Sắp xếp theo thời gian
-          const timeA = a.time.split(':').map(Number)
-          const timeB = b.time.split(':').map(Number)
+          const timeA = a.time.split(':').map(Number);
+          const timeB = b.time.split(':').map(Number);
           
-          if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0]
-          return timeA[1] - timeB[1]
-        })
+          if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0];
+          return timeA[1] - timeB[1];
+        });
       
-      setAvailableTimes(timeSlots)
+      setAvailableTimes(timeSlots);
     } else {
-      setAvailableTimes([])
+      setAvailableTimes([]);
     }
-  }
+  };
   
   // Khi chọn giờ chiếu
   const handleTimeChange = (timeSlot) => {

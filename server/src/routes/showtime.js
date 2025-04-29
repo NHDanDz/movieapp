@@ -66,4 +66,14 @@ router.delete('/showtimes/:id', auth.enhance, async (req, res) => {
   }
 });
 
+router.get('/showtimes/movie/:id', async (req, res) => {
+  const movieId = req.params.id;
+  try {
+    const showtimes = await Showtime.findByMovieId(parseInt(movieId));
+    res.send(showtimes);
+  } catch (e) {
+    res.status(400).send(e);
+  }
+});
+
 module.exports = router;

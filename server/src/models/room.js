@@ -213,20 +213,27 @@ class Room {
       
       const reservedSeats = result.recordset.map(seat => `${seat.RowName}-${seat.SeatNumber}`);
       
+      // Nếu không có ghế cần kiểm tra, trả về tất cả ghế đã đặt
+      if (!selectedSeats || selectedSeats.length === 0) {
+        return {
+          available: true,
+          reservedSeats
+        };
+      }
+      
       // Kiểm tra xem ghế được chọn có nằm trong danh sách ghế đã đặt không
+      const unavailableSeats = [];
       for (const seat of selectedSeats) {
         const seatKey = `${seat.rowName}-${seat.seatNumber}`;
         if (reservedSeats.includes(seatKey)) {
-          return {
-            available: false,
-            unavailableSeats: [seatKey]
-          };
+          unavailableSeats.push(seatKey);
         }
       }
       
       return {
-        available: true,
-        unavailableSeats: []
+        available: unavailableSeats.length === 0,
+        unavailableSeats,
+        reservedSeats
       };
     } catch (error) {
       console.error('Error checking seats availability:', error);
