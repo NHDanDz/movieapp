@@ -1,207 +1,197 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/hooks/useAuth'
 import { useBooking } from '@/hooks/useBooking'
-import { cinemaApi } from '@/lib/api'
-import { formatCurrency, formatDate, convertToAlphabet } from '@/lib/utils'
-import { Loader2, CalendarDays, Clock, MapPin, CircleDollarSign, Users } from 'lucide-react'
-import { 
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { useAuth } from '@/hooks/useAuth'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import { Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { roomApi } from '@/lib/api'
 
-const BookingCheckout = () => {
-  const [cinema, setCinema] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  
-  const { user, isAuthenticated } = useAuth()
+export default function BookingCheckout() {
   const { 
-    selectedCinema, 
+    selectedMovie,
+    selectedCinema,
+    selectedRoom,
     selectedDate,
     selectedTime,
+    selectedShowtime,
     selectedSeats,
     addReservation,
-    toggleLoginPopup
+    showInvitationForm,
+    toggleLoginPopup,
+    loading
   } = useBooking()
   
-  // Fetch cinema details
+  const { user, isAuthenticated } = useAuth()
+  const [phone, setPhone] = useState(user?.phone || '')
+  const [roomPrice, setRoomPrice] = useState(0)
+  
+  // Lấy giá vé cơ bản của phòng
   useEffect(() => {
-    const fetchCinema = async () => {
-      if (!selectedCinema) return
+    const fetchRoomPrice = async () => {
+      if (!selectedRoom) return
       
       try {
-        setLoading(true)
-        const res = await cinemaApi.getById(selectedCinema)
-        setCinema(res.data)
+        const roomData = await roomApi.getById(selectedRoom)
+        if (roomData.data && roomData.data.TicketPrice) {
+          setRoomPrice(parseFloat(roomData.data.TicketPrice))
+        } else {
+          // Giá mặc định nếu không lấy được từ API
+          setRoomPrice(85000)
+        }
       } catch (error) {
-        console.error('Error fetching cinema details:', error)
-      } finally {
-        setLoading(false)
+        console.error('Lỗi khi lấy thông tin phòng:', error)
+        setRoomPrice(85000) // Giá mặc định
       }
     }
     
-    fetchCinema()
-  }, [selectedCinema])
+    fetchRoomPrice()
+  }, [selectedRoom])
   
-  const handleCheckout = async () => {
+  // Tính tổng tiền dựa trên số ghế đã chọn và loại ghế
+  const calculateTotal = () => {
+    // Sử dụng giá vé từ phòng chiếu
+    const basePrice = roomPrice
+    
+    // Tính tổng tiền dựa trên số ghế và loại ghế
+    return selectedSeats.reduce((total, seat) => {
+      // Phụ thu nếu là ghế Premium
+      const extraCharge = seat.extraCharge || (seat.seatType === 'premium' ? 15000 : 0)
+      return total + basePrice + extraCharge
+    }, 0)
+  }
+  
+  // Format tiền VND
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount)
+  }
+  
+  // Xử lý khi click vào nút đặt vé
+  const handleBooking = async () => {
     if (!isAuthenticated) {
       toggleLoginPopup()
       return
     }
     
-    if (!selectedSeats.length) {
+    if (!phone) {
+      alert('Vui lòng nhập số điện thoại')
       return
     }
     
-    try {
-      setSubmitting(true)
-      
-      // Format seats for API
-      const formattedSeats = selectedSeats.map(seat => [seat[0], seat[1]])
-      
-      // Create reservation data
-      const reservationData = {
-        date: selectedDate,
-        startAt: selectedTime,
-        seats: formattedSeats,
-        ticketPrice: cinema.ticketPrice,
-        total: selectedSeats.length * cinema.ticketPrice,
-        movieId: selectedCinema,
-        cinemaId: cinema._id,
-        username: user.username,
-        phone: user.phone || ''
-      }
-      
-      await addReservation(reservationData)
-    } catch (error) {
-      console.error('Error during checkout:', error)
-    } finally {
-      setSubmitting(false)
+    if (selectedSeats.length === 0) {
+      alert('Vui lòng chọn ít nhất một ghế')
+      return
+    }
+    
+    const today = new Date()
+    const reservationData = {
+      date: selectedDate,
+      startAt: selectedTime,
+      ticketPrice: roomPrice, // Giá vé cơ bản của phòng
+      total: calculateTotal(),
+      userId: user.id,
+      movieId: parseInt(selectedMovie),
+      showtimeId: parseInt(selectedShowtime),
+      roomId: parseInt(selectedRoom),
+      cinemaId: parseInt(selectedCinema),
+      username: user.username,
+      phone,
+      seats: selectedSeats.map(seat => ({
+        ...seat,
+        seatPrice: roomPrice + (seat.extraCharge || 0)
+      }))
+    }
+    
+    const result = await addReservation(reservationData)
+    
+    if (result && result.status === 'success') {
+      showInvitationForm()
     }
   }
-  
-  // Calculate total price
-  const calculateTotal = () => {
-    if (!cinema) return 0
-    return selectedSeats.length * cinema.ticketPrice
-  }
-  
-  // Format selected seats for display
-  const formatSelectedSeats = () => {
-    if (!selectedSeats.length) return 'Chưa chọn ghế'
-    
-    return selectedSeats
-      .map(([row, seat]) => `${convertToAlphabet(row)}${seat + 1}`)
-      .join(', ')
-  }
-  
-  if (loading) {
-    return (
-      <Card className="border-gray-800">
-        <CardContent className="py-6">
-          <div className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-dark" />
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-  
-  if (!cinema) return null
-  
+
   return (
-    <Card className="border-gray-800">
+    <Card>
       <CardHeader>
-        <CardTitle>Thông tin đặt vé</CardTitle>
+        <CardTitle>Thanh toán</CardTitle>
       </CardHeader>
-      
-      <CardContent className="space-y-6">
-        {selectedSeats.length === 0 && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              Vui lòng chọn ít nhất một ghế để tiếp tục đặt vé
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex items-start gap-3">
-            <CalendarDays className="h-5 w-5 text-primary-dark flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-sm text-gray-400">Ngày chiếu</p>
-              <p className="font-medium">{formatDate(selectedDate)}</p>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Thông tin giá vé */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="font-medium">Giá vé cơ bản:</div>
+            <div className="text-right">{formatCurrency(roomPrice)}</div>
+            
+            <div className="font-medium">Phụ thu ghế Premium:</div>
+            <div className="text-right">{formatCurrency(15000)} / ghế</div>
+            
+            <div className="font-medium">Số lượng ghế:</div>
+            <div className="text-right">{selectedSeats.length}</div>
+            
+            <div className="font-medium">Ghế đã chọn:</div>
+            <div className="text-right">
+              {selectedSeats.map((seat, index) => (
+                <span key={`checkout-seat-${index}`}>
+                  {`Hàng ${seat.rowName} - Ghế ${seat.seatNumber}`}
+                  {(seat.seatType === 'premium' || seat.seatType === 'vip') ? ' (Premium)' : ''}
+                  {index < selectedSeats.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+            
+            <div className="font-medium text-lg pt-2">Tổng tiền:</div>
+            <div className="text-right text-lg font-bold text-primary pt-2">
+              {formatCurrency(calculateTotal())}
             </div>
           </div>
           
-          <div className="flex items-start gap-3">
-            <Clock className="h-5 w-5 text-primary-dark flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-sm text-gray-400">Giờ chiếu</p>
-              <p className="font-medium">{selectedTime}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <MapPin className="h-5 w-5 text-primary-dark flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-sm text-gray-400">Rạp chiếu</p>
-              <p className="font-medium">{cinema.name}</p>
-              <p className="text-sm text-gray-400 capitalize">{cinema.city}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <Users className="h-5 w-5 text-primary-dark flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-sm text-gray-400">Ghế đã chọn</p>
-              <p className="font-medium">{formatSelectedSeats()}</p>
-              {selectedSeats.length > 0 && (
-                <p className="text-sm text-gray-400">{selectedSeats.length} ghế</p>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-6 pt-6 border-t border-gray-800">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-400">Giá vé:</span>
-            <span>{formatCurrency(cinema.ticketPrice)} / vé</span>
-          </div>
-          
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-400">Số lượng:</span>
-            <span>{selectedSeats.length} vé</span>
-          </div>
-          
-          <div className="flex justify-between items-center text-lg font-semibold mt-4">
-            <span>Tổng cộng:</span>
-            <span className="text-primary-dark">{formatCurrency(calculateTotal())}</span>
+          {/* Thông tin liên hệ */}
+          <div className="space-y-2 pt-4">
+            <div className="font-medium">Số điện thoại liên hệ:</div>
+            <Input
+              type="tel"
+              placeholder="Số điện thoại"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
           </div>
         </div>
       </CardContent>
-      
-      <CardFooter className="flex justify-end gap-4 pt-2">
-        <Button
-          size="lg"
-          onClick={handleCheckout}
-          disabled={selectedSeats.length === 0 || submitting}
-          className="relative"
-        >
-          {submitting && (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          )}
-          Đặt vé ngay
-        </Button>
+      <CardFooter className="flex justify-between">
+        {isAuthenticated ? (
+          <Button 
+            className="w-full" 
+            disabled={
+              selectedSeats.length === 0 || 
+              !phone ||
+              loading
+            }
+            onClick={handleBooking}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang xử lý...
+              </>
+            ) : (
+              'Đặt vé ngay'
+            )}
+          </Button>
+        ) : (
+          <Button 
+            className="w-full" 
+            onClick={toggleLoginPopup}
+          >
+            Đăng nhập để đặt vé
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )
 }
-
-export default BookingCheckout

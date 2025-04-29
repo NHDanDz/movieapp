@@ -2,199 +2,288 @@
 
 import { useState, useEffect } from 'react'
 import { useBooking } from '@/hooks/useBooking'
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
-import { convertToAlphabet } from '@/lib/utils'
-import { reservationApi } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
-const BookingSeats = ({ seats }) => {
+export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCol: 0 }, reservedSeats = [] }) {
   const { 
-    selectedMovie,
-    selectedCinema, 
-    selectedDate, 
-    selectedTime,
     selectedSeats, 
-    suggestedSeats,
-    selectSeat
+    selectSeat, 
+    isSeatSelected,
+    suggestedSeats 
   } = useBooking()
   
-  const [reservedSeats, setReservedSeats] = useState([])
-  const [finalSeats, setFinalSeats] = useState([])
+  const [showSuggestion, setShowSuggestion] = useState(false)
   
-  // Fetch reserved seats for this screening
+  // Hiển thị gợi ý ghế nếu có
   useEffect(() => {
-    const fetchReservations = async () => {
-      if (!selectedMovie || !selectedCinema || !selectedDate || !selectedTime) return
-      
-      try {
-        const res = await reservationApi.getAll()
-        
-        if (res.data) {
-          // Filter reservations for this screening
-          const reservations = res.data.filter(r => 
-            r.movieId === selectedMovie &&
-            r.cinemaId === selectedCinema &&
-            new Date(r.date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() &&
-            r.startAt === selectedTime
-          )
-          
-          // Extract reserved seats
-          let reserved = []
-          reservations.forEach(reservation => {
-            if (reservation.seats && reservation.seats.length) {
-              reserved = [...reserved, ...reservation.seats]
-            }
-          })
-          
-          setReservedSeats(reserved)
-        }
-      } catch (error) {
-        console.error('Error fetching reservations:', error)
-      }
+    if (suggestedSeats && suggestedSeats.preferredPosition) {
+      setShowSuggestion(true)
     }
-    
-    fetchReservations()
-  }, [selectedMovie, selectedCinema, selectedDate, selectedTime])
+  }, [suggestedSeats])
   
-  // Process seats data
-  useEffect(() => {
-    if (!seats || !seats.length) {
-      setFinalSeats([])
-      return
-    }
+  // Chọn ghế gợi ý
+  const selectSuggestedSeats = () => {
+    if (!suggestedSeats || !seats.matrix || !seats.rowNames) return
     
-    // Create a copy of the seats
-    const processedSeats = seats.map(row => [...row])
-    
-    // Mark reserved seats
-    reservedSeats.forEach(([row, seat]) => {
-      if (processedSeats[row] && processedSeats[row][seat] !== undefined) {
-        processedSeats[row][seat] = 1 // 1 = reserved
-      }
+    // Reset ghế đã chọn
+    selectedSeats.forEach(seat => {
+      selectSeat(seat.rowName, seat.seatNumber)
     })
     
-    // Mark suggested seats
-    if (suggestedSeats && suggestedSeats.length) {
-      suggestedSeats.forEach(([row, seat]) => {
-        if (
-          processedSeats[row] && 
-          processedSeats[row][seat] !== undefined && 
-          processedSeats[row][seat] !== 1 // Not already reserved
-        ) {
-          processedSeats[row][seat] = 3 // 3 = suggested
-        }
-      })
+    // Tìm ghế phù hợp với vị trí ưa thích
+    const preferredPosition = suggestedSeats.preferredPosition
+    const avgTickets = suggestedSeats.avgTickets || 2
+    
+    // Tìm ghế phù hợp dựa trên vị trí ưa thích
+    let foundSeats = []
+    const totalRows = seats.rowNames.length
+    
+    if (preferredPosition === 'front') {
+      // Tìm ghế ở 1/3 đầu phòng
+      const frontRows = Math.ceil(totalRows / 3)
+      for (let row = 0; row < frontRows; row++) {
+        findAvailableSeatsInRow(row, avgTickets, foundSeats)
+        if (foundSeats.length === avgTickets) break
+      }
+    } else if (preferredPosition === 'center') {
+      // Tìm ghế ở giữa phòng
+      const startRow = Math.floor(totalRows / 3)
+      const endRow = Math.floor(2 * totalRows / 3)
+      for (let row = startRow; row < endRow; row++) {
+        findAvailableSeatsInRow(row, avgTickets, foundSeats)
+        if (foundSeats.length === avgTickets) break
+      }
+    } else {
+      // Tìm ghế ở 1/3 cuối phòng
+      const startRow = Math.floor(2 * totalRows / 3)
+      for (let row = startRow; row < totalRows; row++) {
+        findAvailableSeatsInRow(row, avgTickets, foundSeats)
+        if (foundSeats.length === avgTickets) break
+      }
     }
     
-    // Mark selected seats
-    selectedSeats.forEach(([row, seat]) => {
-      if (
-        processedSeats[row] && 
-        processedSeats[row][seat] !== undefined && 
-        processedSeats[row][seat] !== 1 // Not already reserved
-      ) {
-        processedSeats[row][seat] = 2 // 2 = selected
-      }
+    // Chọn các ghế tìm được
+    foundSeats.forEach(seat => {
+      selectSeat(seat.rowName, seat.seatNumber, seat.seatId, seat.seatType, seat.extraCharge)
     })
     
-    setFinalSeats(processedSeats)
-  }, [seats, reservedSeats, selectedSeats, suggestedSeats])
+    setShowSuggestion(false)
+  }
   
-  // Handle seat click
-  const handleSeatClick = (row, seat) => {
-    // Check if seat is reserved
-    const isReserved = reservedSeats.some(
-      ([r, s]) => r === row && s === seat
+  // Hàm tìm ghế liên tiếp còn trống trong một hàng
+  const findAvailableSeatsInRow = (rowIndex, count, result) => {
+    if (!seats.matrix || rowIndex >= seats.matrix.length) return
+    
+    const row = seats.matrix[rowIndex]
+    const rowName = seats.rowNames[rowIndex]
+    
+    // Tìm cụm ghế liên tiếp còn trống
+    let consecutive = []
+    const middleStart = Math.floor((row.length - count) / 2)
+    
+    // Ưu tiên tìm ở giữa trước
+    for (let col = middleStart; col < middleStart + count; col++) {
+      if (col < row.length && isSeatAvailable(rowIndex, col)) {
+        consecutive.push({
+          rowName,
+          seatNumber: (col + 1).toString(),
+          seatType: row[col] === 2 ? 'premium' : 'standard',
+          extraCharge: row[col] === 2 ? 15000 : 0, // Phụ thu cho ghế premium
+          seatId: null // Sẽ được gán sau khi tạo đặt vé
+        })
+      } else {
+        consecutive = []
+        break
+      }
+    }
+    
+    // Nếu không tìm được ở giữa, tìm từ trái qua phải
+    if (consecutive.length === 0) {
+      for (let col = 0; col < row.length - count + 1; col++) {
+        consecutive = []
+        for (let i = 0; i < count; i++) {
+          if (isSeatAvailable(rowIndex, col + i)) {
+            consecutive.push({
+              rowName,
+              seatNumber: (col + i + 1).toString(),
+              seatType: row[col + i] === 2 ? 'premium' : 'standard',
+              extraCharge: row[col + i] === 2 ? 15000 : 0,
+              seatId: null
+            })
+          } else {
+            consecutive = []
+            break
+          }
+        }
+        if (consecutive.length === count) break
+      }
+    }
+    
+    result.push(...consecutive)
+  }
+  
+  // Kiểm tra ghế có khả dụng không (không phải 0 và không phải 3)
+  const isSeatAvailable = (row, col) => {
+    return seats.matrix[row][col] === 1 || seats.matrix[row][col] === 2
+  }
+  
+  // Kiểm tra ghế đã được đặt chưa
+  const isSeatReserved = (row, col) => {
+    if (!seats.matrix || !seats.rowNames) return false
+    
+    const rowName = seats.rowNames[row]
+    const seatNumber = (col + 1).toString()
+    return reservedSeats.includes(`${rowName}-${seatNumber}`) || seats.matrix[row][col] === 3
+  }
+  
+  // Xác định CSS class cho ghế
+  const getSeatClass = (row, col) => {
+    if (!seats.matrix || !seats.rowNames) return 'invisible'
+    
+    const seatValue = seats.matrix[row][col]
+    const rowName = seats.rowNames[row]
+    const seatNumber = (col + 1).toString()
+    
+    if (seatValue === 0) return 'invisible' // Không có ghế
+    
+    let classes = 'flex items-center justify-center text-xs w-8 h-8 rounded-md cursor-pointer transition-all'
+    
+    // Ghế đã đặt
+    if (isSeatReserved(row, col)) {
+      return `${classes} bg-gray-500 text-white cursor-not-allowed opacity-50`
+    }
+    
+    // Ghế đã chọn
+    if (isSeatSelected(rowName, seatNumber)) {
+      return `${classes} bg-primary text-white`
+    }
+    
+    // Ghế premium/VIP
+    if (seatValue === 2) {
+      return `${classes} bg-yellow-200 hover:bg-yellow-300`
+    }
+    
+    // Ghế thường
+    return `${classes} bg-gray-200 hover:bg-gray-300`
+  }
+
+  // Nếu không có dữ liệu, hiển thị thông báo
+  if (!seats.matrix || !seats.rowNames || seats.matrix.length === 0) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Chọn ghế</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center p-6">
+            Không có dữ liệu ghế. Vui lòng chọn phòng chiếu khác.
+          </div>
+        </CardContent>
+      </Card>
     )
-    
-    if (isReserved) return
-    
-    selectSeat(row, seat)
   }
-  
-  // Get seat status class
-  const getSeatClass = (status) => {
-    switch (status) {
-      case 1: return 'seat-reserved'
-      case 2: return 'seat-selected'
-      case 3: return 'seat-suggested'
-      default: return 'seat-available'
-    }
-  }
-  
+
   return (
-    <Card className="mb-8 border-gray-800">
-      <CardHeader>
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Chọn ghế</CardTitle>
-        <CardDescription>
-          Vui lòng chọn ghế mà bạn muốn đặt
-        </CardDescription>
+        {showSuggestion && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={selectSuggestedSeats}
+          >
+            Chọn ghế gợi ý
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
-        {/* Screen */}
-        <div className="relative mb-8">
-          <div className="w-full h-6 bg-gray-800 rounded-t-lg"></div>
-          <div className="w-4/5 h-1 bg-primary-dark mx-auto rounded-b-lg"></div>
-          <p className="text-center text-xs text-gray-400 mt-2">MÀN HÌNH</p>
-        </div>
-        
-        {/* Seats */}
-        <div className="flex flex-col items-center justify-center mb-8">
-          {finalSeats.map((row, rowIndex) => (
-            <div key={`row-${rowIndex}`} className="flex justify-center my-1">
-              {/* Row label */}
-              <div className="w-8 flex items-center justify-center text-sm text-gray-400 mr-2">
-                {convertToAlphabet(rowIndex)}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-full max-w-xl">
+            {/* Màn hình */}
+            <div className="w-full h-8 bg-gray-700 rounded-lg mb-8 flex items-center justify-center">
+              <span className="text-white text-xs">Màn hình</span>
+            </div>
+            
+            {/* Chú thích */}
+            <div className="flex justify-center space-x-4 mb-6">
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-4 rounded-sm bg-gray-200"></div>
+                <span className="text-xs">Ghế thường</span>
               </div>
-              
-              {/* Seats */}
-              <div className="flex">
-                {row.map((seatStatus, seatIndex) => (
-                  <div
-                    key={`seat-${rowIndex}-${seatIndex}`}
-                    className={`seat ${getSeatClass(seatStatus)}`}
-                    onClick={() => handleSeatClick(rowIndex, seatIndex)}
-                  >
-                    {seatIndex + 1}
-                  </div>
-                ))}
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-4 rounded-sm bg-yellow-200"></div>
+                <span className="text-xs">Ghế Premium</span>
               </div>
-              
-              {/* Row label (right side) */}
-              <div className="w-8 flex items-center justify-center text-sm text-gray-400 ml-2">
-                {convertToAlphabet(rowIndex)}
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-4 rounded-sm bg-primary"></div>
+                <span className="text-xs">Ghế đã chọn</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-4 rounded-sm bg-gray-500 opacity-50"></div>
+                <span className="text-xs">Ghế đã đặt</span>
               </div>
             </div>
-          ))}
+            
+            {/* Ma trận ghế */}
+            <div className="flex flex-col items-center">
+              {seats.matrix.map((row, rowIndex) => (
+                <div key={`row-${rowIndex}`} className="flex justify-center space-x-2 mb-2">
+                  <div className="w-6 flex items-center justify-center font-medium">
+                    {seats.rowNames[rowIndex]}
+                  </div>
+                  {Array.from({ length: seats.maxCol }).map((_, colIndex) => (
+                    <button
+                      key={`seat-${rowIndex}-${colIndex}`}
+                      className={getSeatClass(rowIndex, colIndex)}
+                      disabled={
+                        colIndex >= row.length || 
+                        row[colIndex] === 0 || 
+                        row[colIndex] === 3 || 
+                        isSeatReserved(rowIndex, colIndex)
+                      }
+                      onClick={() => {
+                        if (colIndex < row.length && row[colIndex] !== 0 && !isSeatReserved(rowIndex, colIndex)) {
+                          const rowName = seats.rowNames[rowIndex]
+                          const seatNumber = (colIndex + 1).toString()
+                          const seatType = row[colIndex] === 2 ? 'premium' : 'standard'
+                          const extraCharge = row[colIndex] === 2 ? 15000 : 0 // Phụ thu cho ghế premium
+                          
+                          selectSeat(rowName, seatNumber, null, seatType, extraCharge)
+                        }
+                      }}
+                    >
+                      {colIndex + 1}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         
-        {/* Seat legend */}
-        <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-400">
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-cinema-seat-available rounded mr-2"></div>
-            <span>Ghế trống</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-cinema-seat-reserved rounded mr-2"></div>
-            <span>Ghế đã đặt</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-cinema-seat-selected rounded mr-2"></div>
-            <span>Ghế đang chọn</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-cinema-seat-suggested rounded mr-2"></div>
-            <span>Ghế gợi ý</span>
+        {/* Hiển thị ghế đã chọn */}
+        <div className="mt-4">
+          <h3 className="text-sm font-medium mb-2">Ghế đã chọn:</h3>
+          <div className="flex flex-wrap gap-2">
+            {selectedSeats.length === 0 ? (
+              <span className="text-sm text-gray-500">Chưa chọn ghế nào</span>
+            ) : (
+              selectedSeats.map((seat, index) => (
+                <Badge 
+                  key={`selected-${index}`}
+                  variant={seat.seatType === 'premium' || seat.seatType === 'vip' ? 'secondary' : 'outline'}
+                >
+                  {`Hàng ${seat.rowName} - Ghế ${seat.seatNumber}`}
+                  {(seat.seatType === 'premium' || seat.seatType === 'vip') && ' (Premium)'}
+                </Badge>
+              ))
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
   )
 }
-
-export default BookingSeats

@@ -127,7 +127,7 @@ export default function CinemasPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCinemas.map((cinema) => (
-            <CinemaCard key={cinema._id} cinema={cinema} />
+            <CinemaCard key={cinema.id} cinema={cinema} />
           ))}
         </div>
       )}

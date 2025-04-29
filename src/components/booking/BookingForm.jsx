@@ -1,239 +1,226 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import DatePicker from 'react-datepicker'
-import { vi } from 'date-fns/locale'
-import { Calendar } from 'lucide-react'
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Button } from '@/components/ui/button'
 import { useBooking } from '@/hooks/useBooking'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { format } from 'date-fns'
+import { vi } from 'date-fns/locale'
 
-import "react-datepicker/dist/react-datepicker.css"
-
-const BookingForm = ({ cinemas, showtimes }) => {
+export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }) {
   const { 
-    selectedCinema,
-    selectedDate,
+    selectedMovie,
+    selectedCinema, 
+    selectedRoom,
+    selectedDate, 
     selectedTime,
     setSelectedCinema,
+    setSelectedRoom,
     setSelectedDate,
-    setSelectedTime
+    setSelectedTime,
+    setSelectedShowtime,
+    resetBooking,
   } = useBooking()
   
+  const [availableDates, setAvailableDates] = useState([])
   const [availableTimes, setAvailableTimes] = useState([])
-  const [minDate, setMinDate] = useState(new Date())
-  const [maxDate, setMaxDate] = useState(null)
+  const [filteredShowtimes, setFilteredShowtimes] = useState([])
   
-  // Filter available showtimes based on selected cinema and date
-  useEffect(() => {
-    if (!selectedCinema || !selectedDate || !showtimes.length) {
-      setAvailableTimes([])
-      return
-    }
-    
-    // Convert selectedDate to start of day for comparison
-    const selectedDateStart = new Date(selectedDate)
-    selectedDateStart.setHours(0, 0, 0, 0)
-    
-    // Find showtimes for selected cinema
-    const filteredShowtimes = showtimes.filter(showtime => {
-      // Check cinema
-      if (showtime.cinemaId !== selectedCinema) return false
-      
-      // Check if date is within showtime range
-      const startDate = new Date(showtime.startDate)
-      startDate.setHours(0, 0, 0, 0)
-      
-      const endDate = new Date(showtime.endDate)
-      endDate.setHours(23, 59, 59, 999)
-      
-      return selectedDateStart >= startDate && selectedDateStart <= endDate
-    })
-    
-    // Extract unique times
-    const times = filteredShowtimes
-      .map(showtime => showtime.startAt)
-      .filter((time, index, self) => self.indexOf(time) === index)
-      .sort()
-    
-    setAvailableTimes(times)
-    
-    // If current selected time is not available, reset it
-    if (selectedTime && !times.includes(selectedTime)) {
-      setSelectedTime('')
-    }
-  }, [selectedCinema, selectedDate, showtimes, selectedTime, setSelectedTime])
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return format(date, 'EEEE, dd/MM/yyyy', { locale: vi })
+  }
   
-  // Set min and max date range when cinema is selected
-  useEffect(() => {
-    if (!selectedCinema || !showtimes.length) {
-      setMinDate(new Date())
-      setMaxDate(null)
-      return
-    }
-    
-    // Find all showtimes for the selected cinema
-    const cinemaShowtimes = showtimes.filter(
-      showtime => showtime.cinemaId === selectedCinema
-    )
-    
-    if (!cinemaShowtimes.length) return
-    
-    // Find min and max dates
-    let minDateValue = new Date()
-    let maxDateValue = new Date()
-    maxDateValue.setDate(maxDateValue.getDate() + 30) // Default 30 days
-    
-    cinemaShowtimes.forEach(showtime => {
-      const startDate = new Date(showtime.startDate)
-      const endDate = new Date(showtime.endDate)
-      
-      if (startDate < minDateValue) {
-        minDateValue = startDate
-      }
-      
-      if (endDate > maxDateValue) {
-        maxDateValue = endDate
-      }
-    })
-    
-    // If minDate is in the past, use today
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    if (minDateValue < today) {
-      minDateValue = today
-    }
-    
-    setMinDate(minDateValue)
-    setMaxDate(maxDateValue)
-    
-    // If current selected date is outside new range, reset it
-    if (selectedDate) {
-      const selectedDateObj = new Date(selectedDate)
-      selectedDateObj.setHours(0, 0, 0, 0)
-      
-      if (selectedDateObj < minDateValue || selectedDateObj > maxDateValue) {
-        setSelectedDate(minDateValue)
-      }
-    } else {
-      // If no date selected, set to min date
-      setSelectedDate(minDateValue)
-    }
-  }, [selectedCinema, showtimes, selectedDate, setSelectedDate])
-  
+  // Khi chọn rạp
   const handleCinemaChange = (value) => {
     setSelectedCinema(value)
-    setSelectedTime('')
+    setSelectedRoom(null)
+    setSelectedDate(null)
+    setSelectedTime(null)
+    setSelectedShowtime(null)
   }
   
-  const handleDateChange = (date) => {
-    setSelectedDate(date)
-    setSelectedTime('')
+  // Khi chọn phòng
+  const handleRoomChange = (value) => {
+    setSelectedRoom(value)
+    setSelectedDate(null)
+    setSelectedTime(null)
+    setSelectedShowtime(null)
+    
+    // Lọc các suất chiếu cho phòng đã chọn
+    if (value) {
+      const filtered = showtimes.filter(
+        showtime => showtime.RoomID === parseInt(value) || showtime.roomId === parseInt(value)
+      )
+      setFilteredShowtimes(filtered)
+      
+      // Lấy danh sách ngày chiếu từ các suất chiếu đã lọc
+      const dates = [...new Set(filtered.map(showtime => 
+        showtime.StartDate || showtime.startDate
+      ))].sort()
+      
+      setAvailableDates(dates)
+    } else {
+      setFilteredShowtimes([])
+      setAvailableDates([])
+    }
   }
   
+  // Khi chọn ngày
+  const handleDateChange = (value) => {
+    setSelectedDate(value)
+    setSelectedTime(null)
+    setSelectedShowtime(null)
+    
+    // Lọc các suất chiếu cho ngày đã chọn
+    if (value) {
+      const timeSlots = filteredShowtimes
+        .filter(showtime => 
+          (showtime.StartDate === value || showtime.startDate === value)
+        )
+        .map(showtime => ({
+          id: showtime.ID || showtime.id,
+          time: showtime.StartAt || showtime.startAt
+        }))
+        .sort((a, b) => {
+          // Sắp xếp theo thời gian
+          const timeA = a.time.split(':').map(Number)
+          const timeB = b.time.split(':').map(Number)
+          
+          if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0]
+          return timeA[1] - timeB[1]
+        })
+      
+      setAvailableTimes(timeSlots)
+    } else {
+      setAvailableTimes([])
+    }
+  }
+  
+  // Khi chọn giờ chiếu
+  const handleTimeChange = (timeSlot) => {
+    // Tách id và time từ timeSlot (format: "id|time")
+    const [id, time] = timeSlot.split('|')
+    
+    setSelectedTime(time)
+    setSelectedShowtime(id)
+  }
+
   return (
-    <Card className="mb-8 border-gray-800">
+    <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Chọn suất chiếu</CardTitle>
-        <CardDescription>
-          Vui lòng chọn rạp, ngày và suất chiếu để tiếp tục đặt vé
-        </CardDescription>
+        <CardTitle>Chọn rạp và suất chiếu</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Cinema Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Rạp chiếu phim
-            </label>
-            <Select 
-              value={selectedCinema || ''} 
+        <div className="grid gap-6">
+          {/* Chọn rạp */}
+          <div className="grid gap-2">
+            <Label htmlFor="cinema">Rạp chiếu phim</Label>
+            <Select
+              value={selectedCinema || ''}
               onValueChange={handleCinemaChange}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn rạp chiếu" />
+              <SelectTrigger id="cinema">
+                <SelectValue placeholder="Chọn rạp phim" />
               </SelectTrigger>
               <SelectContent>
-                {cinemas.map(cinema => (
-                  <SelectItem key={cinema._id} value={cinema._id}>
-                    {cinema.name}
+                {cinemas.map((cinema) => (
+                  <SelectItem 
+                    key={cinema.id || cinema.ID} 
+                    value={cinema.id?.toString() || cinema.ID?.toString()}
+                  >
+                    {cinema.name || cinema.Name} - {cinema.city || cinema.City}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           
-          {/* Date Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Ngày xem phim
-            </label>
-            <div className="relative">
-              <DatePicker
-                selected={selectedDate}
-                onChange={handleDateChange}
-                minDate={minDate}
-                maxDate={maxDate}
-                dateFormat="dd/MM/yyyy"
-                locale={vi}
-                disabled={!selectedCinema}
-                className="w-full p-2 rounded-md bg-background border border-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-dark"
-              />
-              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+          {/* Chọn phòng chiếu - Thêm mới */}
+          {selectedCinema && rooms.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="room">Phòng chiếu</Label>
+              <Select
+                value={selectedRoom || ''}
+                onValueChange={handleRoomChange}
+              >
+                <SelectTrigger id="room">
+                  <SelectValue placeholder="Chọn phòng chiếu" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rooms.map((room) => (
+                    <SelectItem 
+                      key={room.id || room.ID} 
+                      value={room.id?.toString() || room.ID?.toString()}
+                    >
+                      {room.name || room.Name} ({room.roomType || room.RoomType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          )}
           
-          {/* Time Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Suất chiếu
-            </label>
-            <Select 
-              value={selectedTime || ''} 
-              onValueChange={setSelectedTime}
-              disabled={!selectedCinema || !selectedDate || availableTimes.length === 0}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn giờ chiếu" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTimes.map(time => (
-                  <SelectItem key={time} value={time}>
-                    {time}
-                  </SelectItem>
+          {/* Chọn ngày */}
+          {selectedRoom && availableDates.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="date">Chọn ngày</Label>
+              <RadioGroup 
+                value={selectedDate || ''}
+                onValueChange={handleDateChange}
+                className="flex flex-wrap gap-2"
+              >
+                {availableDates.map((date) => (
+                  <div key={date} className="flex items-center">
+                    <RadioGroupItem 
+                      value={date} 
+                      id={`date-${date}`}
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor={`date-${date}`}
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <span className="text-sm font-medium">{formatDate(date)}</span>
+                    </Label>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </RadioGroup>
+            </div>
+          )}
+          
+          {/* Chọn giờ */}
+          {selectedDate && availableTimes.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="time">Chọn giờ</Label>
+              <RadioGroup 
+                value={selectedTime ? `${selectedShowtime}|${selectedTime}` : ''}
+                onValueChange={handleTimeChange}
+                className="flex flex-wrap gap-2"
+              >
+                {availableTimes.map((slot) => (
+                  <div key={`${slot.id}-${slot.time}`} className="flex items-center">
+                    <RadioGroupItem 
+                      value={`${slot.id}|${slot.time}`} 
+                      id={`time-${slot.id}`}
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor={`time-${slot.id}`}
+                      className="flex min-w-[60px] items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <span className="text-sm font-medium">{slot.time}</span>
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
         </div>
-        
-        {(!selectedCinema || !selectedDate || !selectedTime) && (
-          <div className="mt-6 text-sm text-center text-gray-400">
-            {!selectedCinema 
-              ? "Vui lòng chọn rạp chiếu để tiếp tục" 
-              : !selectedDate 
-                ? "Vui lòng chọn ngày xem phim" 
-                : !selectedTime 
-                  ? "Vui lòng chọn suất chiếu" 
-                  : ""}
-          </div>
-        )}
       </CardContent>
     </Card>
   )
 }
-
-export default BookingForm

@@ -2,7 +2,7 @@
 
 import { createContext, useState } from 'react'
 import { useToast } from '@/components/ui/use-toast'
-import { api } from '@/lib/api'
+import { api, reservationApi } from '@/lib/api'
 import { generateQR } from '@/lib/utils'
 
 export const BookingContext = createContext()
@@ -11,10 +11,12 @@ export const BookingProvider = ({ children }) => {
   // State cho quá trình đặt vé
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [selectedCinema, setSelectedCinema] = useState(null)
+  const [selectedRoom, setSelectedRoom] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedTime, setSelectedTime] = useState(null)
+  const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
-  const [suggestedSeats, setSuggestedSeats] = useState([])
+  const [suggestedSeats, setSuggestedSeats] = useState(null)
   const [showLoginPopup, setShowLoginPopup] = useState(false)
   const [showInvitation, setShowInvitation] = useState(false)
   const [invitations, setInvitations] = useState({})
@@ -24,9 +26,9 @@ export const BookingProvider = ({ children }) => {
   const { toast } = useToast()
 
   // Chọn ghế
-  const selectSeat = (row, seat) => {
+  const selectSeat = (rowName, seatNumber, seatId = null, seatType = 'standard', extraCharge = 0) => {
     const seatIndex = selectedSeats.findIndex(
-      s => s[0] === row && s[1] === seat
+      s => s.rowName === rowName && s.seatNumber === seatNumber
     )
 
     if (seatIndex !== -1) {
@@ -34,17 +36,32 @@ export const BookingProvider = ({ children }) => {
       setSelectedSeats(selectedSeats.filter((_, i) => i !== seatIndex))
     } else {
       // Thêm ghế mới vào danh sách đã chọn
-      setSelectedSeats([...selectedSeats, [row, seat]])
+      setSelectedSeats([...selectedSeats, {
+        rowName,
+        seatNumber,
+        seatId,
+        seatType,
+        seatPrice: extraCharge // Sẽ được cộng thêm với giá vé cơ bản
+      }])
     }
+  }
+
+  // Kiểm tra xem ghế có được chọn không
+  const isSeatSelected = (rowName, seatNumber) => {
+    return selectedSeats.some(
+      s => s.rowName === rowName && s.seatNumber === seatNumber
+    )
   }
 
   // Reset toàn bộ quá trình đặt vé
   const resetBooking = () => {
     setSelectedCinema(null)
+    setSelectedRoom(null)
     setSelectedDate(null)
     setSelectedTime(null)
+    setSelectedShowtime(null)
     setSelectedSeats([])
-    setSuggestedSeats([])
+    setSuggestedSeats(null)
     setShowInvitation(false)
     setInvitations({})
     setQRCode(null)
@@ -79,13 +96,24 @@ export const BookingProvider = ({ children }) => {
   const addReservation = async (reservationData) => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('jwtToken')
       
-      const response = await api.post('/reservations', reservationData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
+      // Dựa trên mô hình database mới
+      const finalReservationData = {
+        date: reservationData.date,
+        startAt: reservationData.startAt,
+        ticketPrice: reservationData.ticketPrice,
+        total: reservationData.total,
+        userId: reservationData.userId,
+        movieId: parseInt(selectedMovie),
+        showtimeId: parseInt(selectedShowtime),
+        roomId: parseInt(selectedRoom),
+        cinemaId: parseInt(selectedCinema),
+        username: reservationData.username,
+        phone: reservationData.phone,
+        seats: selectedSeats // Mảng các đối tượng ghế với định dạng mới
+      }
+      
+      const response = await reservationApi.create(finalReservationData)
       
       if (response.data) {
         toast({
@@ -96,9 +124,9 @@ export const BookingProvider = ({ children }) => {
         // Tạo QR code cho vé
         if (response.data.QRCode) {
           setQRCode(response.data.QRCode)
-        } else {
+        } else if (response.data.reservation?.id) {
           const qr = await generateQR(
-            `${window.location.origin}/reservations/${response.data.reservation._id}`
+            `${window.location.origin}/reservations/${response.data.reservation.id}`
           )
           setQRCode(qr)
         }
@@ -121,13 +149,8 @@ export const BookingProvider = ({ children }) => {
   const sendInvitations = async (invitationsData) => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('jwtToken')
       
-      const response = await api.post('/invitations', invitationsData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
+      const response = await api.post('/invitations', invitationsData)
       
       if (response.data) {
         toast({
@@ -154,13 +177,8 @@ export const BookingProvider = ({ children }) => {
   const getSuggestedSeats = async (username) => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('jwtToken')
       
-      const response = await api.get(`/reservations/usermodeling/${username}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
+      const response = await reservationApi.getSuggestedSeats(username)
       
       if (response.data) {
         setSuggestedSeats(response.data)
@@ -179,8 +197,10 @@ export const BookingProvider = ({ children }) => {
       value={{
         selectedMovie,
         selectedCinema,
+        selectedRoom,
         selectedDate,
         selectedTime,
+        selectedShowtime,
         selectedSeats,
         suggestedSeats,
         showLoginPopup,
@@ -190,9 +210,12 @@ export const BookingProvider = ({ children }) => {
         loading,
         setSelectedMovie,
         setSelectedCinema,
+        setSelectedRoom,
         setSelectedDate,
         setSelectedTime,
+        setSelectedShowtime,
         selectSeat,
+        isSeatSelected,
         setSuggestedSeats,
         resetBooking,
         resetCheckout,
