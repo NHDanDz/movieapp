@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { MapPin, Calendar, Clock, Building2, Check } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
@@ -27,11 +28,24 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
   const [availableDates, setAvailableDates] = useState([])
   const [availableTimes, setAvailableTimes] = useState([])
   const [filteredShowtimes, setFilteredShowtimes] = useState([])
+  const [formLoaded, setFormLoaded] = useState(false)
+  
+  // Hiệu ứng load form
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFormLoaded(true)
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [])
   
   // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString)
-    return format(date, 'EEEE, dd/MM/yyyy', { locale: vi })
+    const dayOfWeek = format(date, 'EEEE', { locale: vi })
+    const dayAndMonth = format(date, 'dd/MM', { locale: vi })
+    
+    return { dayOfWeek, dayAndMonth }
   }
   
   // Khi chọn rạp
@@ -109,20 +123,26 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Chọn rạp và suất chiếu</CardTitle>
+    <Card className={`mb-6 border-gray-800 bg-background/70 backdrop-blur-sm transition-all duration-500 ${formLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+      <CardHeader className="border-b border-gray-800 pb-4">
+        <CardTitle className="flex items-center text-lg">
+          <Calendar className="h-5 w-5 mr-2 text-primary-dark" />
+          Chọn rạp và suất chiếu
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6">
+        <div className="grid gap-6 mt-4">
           {/* Chọn rạp */}
           <div className="grid gap-2">
-            <Label htmlFor="cinema">Rạp chiếu phim</Label>
+            <Label htmlFor="cinema" className="flex items-center text-gray-300">
+              <MapPin className="h-4 w-4 mr-2 text-primary-dark" />
+              Rạp chiếu phim
+            </Label>
             <Select
               value={selectedCinema || ''}
               onValueChange={handleCinemaChange}
             >
-              <SelectTrigger id="cinema">
+              <SelectTrigger id="cinema" className="h-12">
                 <SelectValue placeholder="Chọn rạp phim" />
               </SelectTrigger>
               <SelectContent>
@@ -130,6 +150,7 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
                   <SelectItem 
                     key={cinema.id || cinema.ID} 
                     value={cinema.id?.toString() || cinema.ID?.toString()}
+                    className="capitalize"
                   >
                     {cinema.name || cinema.Name} - {cinema.city || cinema.City}
                   </SelectItem>
@@ -140,13 +161,16 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
           
           {/* Chọn phòng chiếu - Thêm mới */}
           {selectedCinema && rooms.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="room">Phòng chiếu</Label>
+            <div className={`grid gap-2 transition-all duration-500 ${selectedCinema ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+              <Label htmlFor="room" className="flex items-center text-gray-300">
+                <Building2 className="h-4 w-4 mr-2 text-primary-dark" />
+                Phòng chiếu
+              </Label>
               <Select
                 value={selectedRoom || ''}
                 onValueChange={handleRoomChange}
               >
-                <SelectTrigger id="room">
+                <SelectTrigger id="room" className="h-12">
                   <SelectValue placeholder="Chọn phòng chiếu" />
                 </SelectTrigger>
                 <SelectContent>
@@ -165,57 +189,88 @@ export default function BookingForm({ cinemas = [], rooms = [], showtimes = [] }
           
           {/* Chọn ngày */}
           {selectedRoom && availableDates.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="date">Chọn ngày</Label>
-              <RadioGroup 
-                value={selectedDate || ''}
-                onValueChange={handleDateChange}
-                className="flex flex-wrap gap-2"
-              >
-                {availableDates.map((date) => (
-                  <div key={date} className="flex items-center">
-                    <RadioGroupItem 
-                      value={date} 
-                      id={`date-${date}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`date-${date}`}
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                    >
-                      <span className="text-sm font-medium">{formatDate(date)}</span>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+            <div className={`grid gap-3 transition-all duration-500 ${selectedRoom ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+              <Label htmlFor="date" className="flex items-center text-gray-300">
+                <Calendar className="h-4 w-4 mr-2 text-primary-dark" />
+                Chọn ngày
+              </Label>
+              <div className="bg-gray-800/50 p-4 rounded-lg">
+                <RadioGroup 
+                  value={selectedDate || ''}
+                  onValueChange={handleDateChange}
+                  className="flex flex-wrap gap-2"
+                >
+                  {availableDates.map((date) => {
+                    const { dayOfWeek, dayAndMonth } = formatDate(date);
+                    const isSelected = selectedDate === date;
+                    
+                    return (
+                      <div key={date} className="flex items-center">
+                        <RadioGroupItem 
+                          value={date} 
+                          id={`date-${date}`}
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor={`date-${date}`}
+                          className={`flex flex-col items-center justify-between rounded-md border-2 p-3 hover:bg-gray-800 hover:border-primary-dark peer-data-[state=checked]:border-primary-dark peer-data-[state=checked]:bg-gray-800/70 [&:has([data-state=checked])]:border-primary-dark cursor-pointer w-20 transition-all duration-300 ${
+                            isSelected ? 'border-primary-dark bg-gray-800/70' : 'border-gray-700 bg-gray-800/30'
+                          }`}
+                        >
+                          <span className={`text-xs font-medium capitalize ${isSelected ? 'text-primary-dark' : 'text-gray-400'}`}>
+                            {dayOfWeek}
+                          </span>
+                          <span className="text-lg font-bold mt-1">{dayAndMonth}</span>
+                          {isSelected && <Check className="h-4 w-4 text-primary-dark mt-1" />}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
             </div>
           )}
           
           {/* Chọn giờ */}
           {selectedDate && availableTimes.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="time">Chọn giờ</Label>
-              <RadioGroup 
-                value={selectedTime ? `${selectedShowtime}|${selectedTime}` : ''}
-                onValueChange={handleTimeChange}
-                className="flex flex-wrap gap-2"
-              >
-                {availableTimes.map((slot) => (
-                  <div key={`${slot.id}-${slot.time}`} className="flex items-center">
-                    <RadioGroupItem 
-                      value={`${slot.id}|${slot.time}`} 
-                      id={`time-${slot.id}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`time-${slot.id}`}
-                      className="flex min-w-[60px] items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                    >
-                      <span className="text-sm font-medium">{slot.time}</span>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+            <div className={`grid gap-3 transition-all duration-500 ${selectedDate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+              <Label htmlFor="time" className="flex items-center text-gray-300">
+                <Clock className="h-4 w-4 mr-2 text-primary-dark" />
+                Chọn giờ
+              </Label>
+              <div className="bg-gray-800/50 p-4 rounded-lg">
+                <RadioGroup 
+                  value={selectedTime ? `${selectedShowtime}|${selectedTime}` : ''}
+                  onValueChange={handleTimeChange}
+                  className="flex flex-wrap gap-3"
+                >
+                  {availableTimes.map((slot) => {
+                    const isSelected = selectedTime === slot.time && selectedShowtime === slot.id.toString();
+                    
+                    return (
+                      <div key={`${slot.id}-${slot.time}`} className="flex items-center">
+                        <RadioGroupItem 
+                          value={`${slot.id}|${slot.time}`} 
+                          id={`time-${slot.id}`}
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor={`time-${slot.id}`}
+                          className={`flex min-w-16 items-center justify-center rounded-md border-2 p-3 hover:bg-gray-800 hover:border-primary-dark peer-data-[state=checked]:border-primary-dark peer-data-[state=checked]:bg-gray-800/70 [&:has([data-state=checked])]:border-primary-dark cursor-pointer transition-all duration-300 ${
+                            isSelected ? 'border-primary-dark bg-gray-800/70' : 'border-gray-700 bg-gray-800/30'
+                          }`}
+                        >
+                          <Clock className={`h-4 w-4 mr-2 ${isSelected ? 'text-primary-dark' : 'text-gray-400'}`} />
+                          <span className={`text-md font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                            {slot.time}
+                          </span>
+                          {isSelected && <Check className="h-4 w-4 text-primary-dark ml-2" />}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
             </div>
           )}
         </div>

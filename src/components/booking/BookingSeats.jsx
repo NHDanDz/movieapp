@@ -6,7 +6,13 @@ import { roomApi } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2 } from 'lucide-react'
+import { Loader2, HelpCircle, Info } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCol: 0 }, reservedSeats = [] }) {
   const { 
@@ -22,6 +28,16 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
   const [loading, setLoading] = useState(false)
   const [localSeats, setLocalSeats] = useState(seats)
   const [localReservedSeats, setLocalReservedSeats] = useState(reservedSeats)
+  const [screenAnimation, setScreenAnimation] = useState(false)
+  
+  // Hiệu ứng màn hình khi tải xong
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setScreenAnimation(true)
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   // Lấy dữ liệu ghế từ DB khi chọn phòng
   useEffect(() => {
@@ -291,6 +307,15 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
     return localReservedSeats.includes(`${rowName}-${seatNumber}`) || localSeats.matrix[row][col] === 3;
   };
   
+  // Kiểm tra ghế có phải ghế gợi ý 
+  const isSuggestedSeat = (rowName, seatNumber) => {
+    if (!suggestedSeats || !suggestedSeats.suggestedSeats) return false;
+    
+    return suggestedSeats.suggestedSeats.some(
+      seat => seat.rowName === rowName && seat.seatNumber === seatNumber
+    );
+  };
+  
   // Xác định CSS class cho ghế
   const getSeatClass = (row, col) => {
     if (!localSeats.matrix || !localSeats.rowNames) return 'invisible';
@@ -301,25 +326,30 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
     
     if (seatValue === 0) return 'invisible'; // Không có ghế
     
-    let classes = 'flex items-center justify-center text-xs w-8 h-8 rounded-md cursor-pointer transition-all';
+    let classes = 'seat flex items-center justify-center text-xs w-9 h-9 rounded-md cursor-pointer transition-all';
     
     // Ghế đã đặt
     if (isSeatReserved(row, col)) {
-      return `${classes} bg-gray-500 text-white cursor-not-allowed opacity-50`;
+      return `${classes} seat-reserved cursor-not-allowed`;
     }
     
     // Ghế đã chọn
     if (isSeatSelected(rowName, seatNumber)) {
-      return `${classes} bg-primary text-white`;
+      return `${classes} seat-selected`;
+    }
+    
+    // Ghế gợi ý
+    if (showSuggestion && isSuggestedSeat(rowName, seatNumber)) {
+      return `${classes} seat-suggested`;
     }
     
     // Ghế premium/VIP
     if (seatValue === 2) {
-      return `${classes} bg-yellow-200 hover:bg-yellow-300`;
+      return `${classes} bg-yellow-600/80 hover:bg-yellow-500`;
     }
     
     // Ghế thường
-    return `${classes} bg-gray-200 hover:bg-gray-300`;
+    return `${classes} seat-available`;
   };
 
   // Xử lý khi người dùng chọn ghế
@@ -343,14 +373,16 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
 
   if (loading) {
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 border-gray-800 bg-background">
         <CardHeader>
-          <CardTitle>Chọn ghế</CardTitle>
+          <CardTitle className="flex items-center">
+            <span>Chọn ghế</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center p-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-            <p>Đang tải thông tin ghế...</p>
+            <Loader2 className="w-10 h-10 loading-spinner text-primary-dark mb-4" />
+            <p className="text-gray-300 animate-pulse">Đang tải thông tin ghế...</p>
           </div>
         </CardContent>
       </Card>
@@ -360,12 +392,13 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
   // Nếu không có dữ liệu, hiển thị thông báo
   if (!localSeats.matrix || !localSeats.rowNames || localSeats.matrix.length === 0) {
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 border-gray-800 bg-background">
         <CardHeader>
           <CardTitle>Chọn ghế</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center p-6">
+            <Info className="h-5 w-5 text-yellow-500 mr-2" />
             Không có dữ liệu ghế. Vui lòng chọn phòng chiếu khác.
           </div>
         </CardContent>
@@ -374,14 +407,27 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
   }
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 border-gray-800 bg-background">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Chọn ghế</CardTitle>
+        <CardTitle className="flex items-center">
+          <span>Chọn ghế</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-4 w-4 ml-2 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-gray-900 border-gray-800">
+                <p className="max-w-xs">Chọn ghế mong muốn để đặt vé. Ghế Premium có thêm phụ phí.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardTitle>
         {showSuggestion && (
           <Button 
             variant="outline" 
             size="sm"
             onClick={selectSuggestedSeats}
+            className="bg-blue-900/30 border-blue-700/50 hover:bg-blue-800/50 hover:border-blue-600 text-blue-400"
           >
             Chọn ghế gợi ý
           </Button>
@@ -389,37 +435,52 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center mb-8">
-          <div className="w-full max-w-xl">
-            {/* Màn hình */}
-            <div className="w-full h-8 bg-gray-700 rounded-lg mb-8 flex items-center justify-center">
-              <span className="text-white text-xs">Màn hình</span>
+          <div className="w-full max-w-2xl">
+            {/* Màn hình với hiệu ứng */}
+            <div className={`screen relative w-4/5 mx-auto mb-12 transition-all duration-1000 ${screenAnimation ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="w-full h-2 bg-primary-dark/70 rounded-t-full"></div>
+              <div className="w-full h-6 bg-gradient-to-b from-primary-dark/70 to-transparent rounded-b-full"></div>
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-400">Màn hình</span>
             </div>
             
             {/* Chú thích */}
-            <div className="flex justify-center space-x-4 mb-6">
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-4 rounded-sm bg-gray-200"></div>
+            <div className="flex flex-wrap justify-center gap-4 mb-8 p-4 bg-gray-800/30 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-sm bg-cinema-seat-available"></div>
                 <span className="text-xs">Ghế thường</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-4 rounded-sm bg-yellow-200"></div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-sm bg-yellow-600/80"></div>
                 <span className="text-xs">Ghế Premium</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-4 rounded-sm bg-primary"></div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-sm bg-cinema-seat-selected"></div>
                 <span className="text-xs">Ghế đã chọn</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-4 rounded-sm bg-gray-500 opacity-50"></div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-sm bg-cinema-seat-reserved"></div>
                 <span className="text-xs">Ghế đã đặt</span>
               </div>
+              {showSuggestion && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-sm bg-cinema-seat-suggested"></div>
+                  <span className="text-xs">Ghế gợi ý</span>
+                </div>
+              )}
             </div>
             
             {/* Ma trận ghế */}
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center bg-gray-800/20 p-6 rounded-lg">
               {localSeats.matrix.map((row, rowIndex) => (
-                <div key={`row-${rowIndex}`} className="flex justify-center space-x-2 mb-2">
-                  <div className="w-6 flex items-center justify-center font-medium">
+                <div 
+                  key={`row-${rowIndex}`} 
+                  className="flex justify-center space-x-2 mb-2"
+                  style={{
+                    animation: `fadeIn 0.3s ease forwards ${0.05 * rowIndex}s`,
+                    opacity: 0
+                  }}
+                >
+                  <div className="w-6 flex items-center justify-center font-medium text-primary-dark">
                     {localSeats.rowNames[rowIndex]}
                   </div>
                   {Array.from({ length: localSeats.maxCol }).map((_, colIndex) => (
@@ -444,8 +505,11 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
         </div>
         
         {/* Hiển thị ghế đã chọn */}
-        <div className="mt-4">
-          <h3 className="text-sm font-medium mb-2">Ghế đã chọn:</h3>
+        <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
+          <h3 className="text-sm font-medium mb-3 flex items-center">
+            <Info className="h-4 w-4 mr-2 text-primary-dark" />
+            Ghế đã chọn:
+          </h3>
           <div className="flex flex-wrap gap-2">
             {selectedSeats.length === 0 ? (
               <span className="text-sm text-gray-500">Chưa chọn ghế nào</span>
@@ -454,6 +518,7 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
                 <Badge 
                   key={`selected-${index}`}
                   variant={seat.seatType === 'premium' || seat.seatType === 'vip' ? 'secondary' : 'outline'}
+                  className={`${seat.seatType === 'premium' || seat.seatType === 'vip' ? 'bg-yellow-600 hover:bg-yellow-500' : 'hover:bg-primary-dark/20'} transition-all duration-300 animate-fadeIn`}
                 >
                   {`Hàng ${seat.rowName} - Ghế ${seat.seatNumber}`}
                   {(seat.seatType === 'premium' || seat.seatType === 'vip') && ' (Premium)'}
