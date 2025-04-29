@@ -362,3 +362,52 @@
   background-color: rgb(14, 151, 218);
   animation: pulse 2s infinite;
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Seat styling */
+.seat {
+  transition: all 0.2s ease;
+}
+
+.seat:hover {
+  transform: scale(1.1);
+}
+
+.seat-available {
+  background-color: rgba(29, 78, 216, 0.8);
+  color: white;
+}
+
+.seat-available:hover {
+  background-color: rgba(37, 99, 235, 0.9);
+}
+
+.seat-selected {
+  background-color: var(--primary-dark);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 0 8px rgba(var(--primary-dark-rgb), 0.7);
+}
+
+.seat-reserved {
+  background-color: #4b5563;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.seat-suggested {
+  background-color: rgba(37, 99, 235, 0.7);
+  border: 2px dashed white;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}

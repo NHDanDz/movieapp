@@ -16,6 +16,7 @@ import BookingCheckout from '@/components/booking/BookingCheckout'
 import BookingInvitation from '@/components/booking/BookingInvitation'
 import LoginForm from '@/components/auth/LoginForm'
 import { useParams } from 'next/navigation'
+import { Label } from '@/components/ui/label'
 
 export default function BookingPage() {
   const params = useParams(); 
@@ -26,7 +27,12 @@ export default function BookingPage() {
   const [rooms, setRooms] = useState([])
   const [showtimes, setShowtimes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [seats, setSeats] = useState([])
+  const [seats, setSeats] = useState({
+    matrix: [],
+    rowNames: [],
+    maxCol: 0,
+    originalData: []
+  })
   const [reservedSeats, setReservedSeats] = useState([])
   
   const router = useRouter()
@@ -52,7 +58,8 @@ export default function BookingPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log(movieId)
+        console.log("Fetching initial data for movieId:", movieId);
+        
         // Fetch movie details
         const movieRes = await movieApi.getById(movieId);
         setMovie(movieRes.data);
@@ -89,6 +96,8 @@ export default function BookingPage() {
       
       try {
         setLoading(true);
+        console.log("Fetching rooms for cinema:", selectedCinema);
+        
         const roomsRes = await roomApi.getByCinemaId(selectedCinema);
         setRooms(roomsRes.data || []);
       } catch (error) {
@@ -109,9 +118,11 @@ export default function BookingPage() {
       
       try {
         setLoading(true);
+        console.log("Fetching seats for room:", selectedRoom);
         
         // Lấy danh sách ghế trong phòng
         const seatsRes = await roomApi.getSeats(selectedRoom);
+        console.log("Seats data from API:", seatsRes.data);
         
         if (seatsRes.data && seatsRes.data.length > 0) {
           // Tạo mảng các hàng và số cột duy nhất
@@ -142,11 +153,14 @@ export default function BookingPage() {
             }
           });
           
+          console.log("Matrix created:", seatsMatrix);
+          
           // Lưu trữ thông tin các hàng
           setSeats({
             matrix: seatsMatrix,
             rowNames: uniqueRows,
-            maxCol: maxCol
+            maxCol: maxCol,
+            originalData: seatsRes.data  // Lưu dữ liệu gốc để sử dụng ID ghế
           });
           
           // Nếu đã chọn showtime, lấy danh sách ghế đã đặt
@@ -154,32 +168,36 @@ export default function BookingPage() {
             fetchReservedSeats(selectedShowtime);
           }
         } else {
-          // Nếu không có dữ liệu ghế, tạo mẫu mặc định
+          console.log("No seats data, using default matrix");
+          // Nếu không có dữ liệu ghế, tạo ma trận mặc định 
           setSeats({
             matrix: [
               [1, 1, 1, 1, 1],
               [1, 1, 1, 1, 1],
               [1, 1, 1, 1, 1],
               [1, 1, 1, 1, 1],
-              [1, 1, 1, 1, 1]
+              [2, 2, 2, 2, 2]  // Hàng E là ghế premium
             ],
             rowNames: ['A', 'B', 'C', 'D', 'E'],
-            maxCol: 5
+            maxCol: 5,
+            originalData: []
           });
         }
       } catch (error) {
         console.error('Error fetching room seats:', error);
-        // Tạo ma trận ghế mặc định nếu có lỗi
+        // Tạo ma trận ghế mặc định khi có lỗi
+        console.log("Error, using default matrix");
         setSeats({
           matrix: [
             [1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1]
+            [2, 2, 2, 2, 2]  // Hàng E là ghế premium
           ],
           rowNames: ['A', 'B', 'C', 'D', 'E'],
-          maxCol: 5
+          maxCol: 5,
+          originalData: []
         });
       } finally {
         setLoading(false);
@@ -187,20 +205,23 @@ export default function BookingPage() {
     };
     
     fetchRoomSeats();
-  }, [selectedRoom, selectedShowtime]);
+  }, [selectedRoom]);
   
   // Fetch reserved seats when showtime is selected
   const fetchReservedSeats = async (showtimeId) => {
     if (!selectedRoom || !showtimeId) return;
     
     try {
+      console.log("Fetching reserved seats for showtime:", showtimeId);
+      
       // Tạo request để kiểm tra ghế đã đặt
       const dummyCheck = { 
-        showtimeId: showtimeId,
+        showtimeId: parseInt(showtimeId),
         seats: [] // Empty để lấy tất cả ghế đã đặt
       };
       
       const checkRes = await roomApi.checkSeatsAvailability(selectedRoom, dummyCheck);
+      console.log("Reserved seats response:", checkRes.data);
       
       if (checkRes.data && checkRes.data.reservedSeats) {
         setReservedSeats(checkRes.data.reservedSeats);
@@ -248,6 +269,19 @@ export default function BookingPage() {
     }
   }, [selectedShowtime]);
   
+  // Debug info
+  useEffect(() => {
+    console.log("Render state:", {
+      selectedCinema,
+      selectedRoom,
+      selectedDate,
+      selectedTime,
+      selectedShowtime,
+      hasSeats: seats && seats.matrix && seats.matrix.length > 0,
+      showInvitation
+    });
+  }, [selectedCinema, selectedRoom, selectedDate, selectedTime, selectedShowtime, seats, showInvitation]);
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -294,7 +328,7 @@ export default function BookingPage() {
           )}
           
           {/* If cinema, room, date and time are selected, show seats */}
-          {selectedCinema && selectedRoom && selectedDate && selectedTime && !showInvitation && (
+          {selectedCinema && selectedRoom && !showInvitation && (
             <>
               <BookingSeats 
                 seats={seats} 

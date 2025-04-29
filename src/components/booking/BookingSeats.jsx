@@ -39,136 +39,26 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
     return () => clearTimeout(timer);
   }, []);
   
-  // Lấy dữ liệu ghế từ DB khi chọn phòng
+  // Cập nhật localSeats khi props seats thay đổi
   useEffect(() => {
-    const fetchRoomSeats = async () => {
-      if (!selectedRoom) return;
-      
-      try {
-        setLoading(true);
-        
-        // Lấy danh sách ghế trong phòng
-        const seatsRes = await roomApi.getSeats(selectedRoom);
-        
-        if (seatsRes.data && seatsRes.data.length > 0) {
-          // Tạo mảng các hàng và số cột duy nhất
-          const uniqueRows = [...new Set(seatsRes.data.map(seat => seat.RowName))].sort();
-          const uniqueCols = [...new Set(seatsRes.data.map(seat => parseInt(seat.SeatNumber)))].sort((a, b) => a - b);
-          
-          // Tạo mảng 2D với hàng là index của uniqueRows, cột là số thứ tự thực
-          const maxCol = Math.max(...uniqueCols);
-          const seatsMatrix = Array(uniqueRows.length).fill().map(() => Array(maxCol).fill(0));
-          
-          // Lưu trữ ánh xạ giữa tên hàng và index trong mảng
-          const rowMapping = {};
-          uniqueRows.forEach((rowName, index) => {
-            rowMapping[rowName] = index;
-          });
-          
-          // Cập nhật ma trận ghế với dữ liệu từ API
-          seatsRes.data.forEach(seat => {
-            const rowIndex = rowMapping[seat.RowName];
-            const colIndex = parseInt(seat.SeatNumber) - 1; // Chuyển về index 0-based
-            
-            if (rowIndex !== undefined && colIndex >= 0 && colIndex < maxCol) {
-              // Gán kiểu ghế: 1 = thường, 2 = premium/vip
-              seatsMatrix[rowIndex][colIndex] = 
-                seat.SeatType === 'premium' || seat.SeatType === 'vip' ? 2 : 1;
-            }
-          });
-          
-          // Lưu trữ thông tin các hàng
-          setLocalSeats({
-            matrix: seatsMatrix,
-            rowNames: uniqueRows,
-            maxCol: maxCol,
-            originalData: seatsRes.data  // Lưu dữ liệu gốc để sử dụng ID ghế
-          });
-          
-          // Nếu đã chọn showtime, lấy danh sách ghế đã đặt
-          if (selectedShowtime) {
-            fetchReservedSeats(selectedShowtime);
-          }
-        } else {
-          // Nếu không có dữ liệu ghế, tạo ma trận trống
-          setLocalSeats({
-            matrix: [],
-            rowNames: [],
-            maxCol: 0,
-            originalData: []
-          });
-        }
-      } catch (error) {
-        console.error('Lỗi khi lấy thông tin ghế:', error);
-        setLocalSeats({
-          matrix: [],
-          rowNames: [],
-          maxCol: 0,
-          originalData: []
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchRoomSeats();
-  }, [selectedRoom]);
+    console.log("BookingSeats - props seats changed:", seats);
+    if (seats && seats.matrix && seats.matrix.length > 0) {
+      setLocalSeats(seats);
+    }
+  }, [seats]);
+  
+  // Cập nhật localReservedSeats khi props reservedSeats thay đổi
+  useEffect(() => {
+    console.log("BookingSeats - props reservedSeats changed:", reservedSeats);
+    setLocalReservedSeats(reservedSeats);
+  }, [reservedSeats]);
   
   // Lấy ghế đã đặt khi chọn suất chiếu
   useEffect(() => {
-    if (selectedShowtime && selectedRoom && localSeats.matrix.length > 0) {
+    if (selectedShowtime && selectedRoom) {
       fetchReservedSeats(selectedShowtime);
     }
-  }, [selectedShowtime, selectedRoom, localSeats.matrix.length]);
-  
-  // Lấy danh sách ghế đã đặt
-  const fetchReservedSeats = async (showtimeId) => {
-    try {
-      const checkData = {
-        showtimeId: parseInt(showtimeId),
-        seats: [] // Gửi mảng rỗng để lấy tất cả ghế đã đặt
-      };
-      
-      const response = await roomApi.checkSeatsAvailability(selectedRoom, checkData);
-      
-      if (response.data && response.data.reservedSeats) {
-        setLocalReservedSeats(response.data.reservedSeats);
-        
-        // Cập nhật ma trận ghế để đánh dấu ghế đã đặt
-        if (localSeats && localSeats.matrix) {
-          const updatedMatrix = [...localSeats.matrix];
-          const rowMapping = {};
-          
-          // Tạo mapping từ tên hàng -> index
-          localSeats.rowNames.forEach((rowName, index) => {
-            rowMapping[rowName] = index;
-          });
-          
-          response.data.reservedSeats.forEach(reservedSeat => {
-            const [rowName, seatNumber] = reservedSeat.split('-');
-            const rowIndex = rowMapping[rowName];
-            const colIndex = parseInt(seatNumber) - 1;
-            
-            // Chỉ cập nhật nếu vị trí nằm trong ma trận
-            if (rowIndex !== undefined && colIndex >= 0 && colIndex < localSeats.maxCol) {
-              // Đánh dấu ghế đã đặt là 3
-              if (updatedMatrix[rowIndex][colIndex] > 0) {
-                updatedMatrix[rowIndex][colIndex] = 3;
-              }
-            }
-          });
-          
-          // Cập nhật state seats
-          setLocalSeats({
-            ...localSeats,
-            matrix: updatedMatrix
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách ghế đã đặt:', error);
-    }
-  };
+  }, [selectedShowtime, selectedRoom]);
   
   // Hiển thị gợi ý ghế nếu có
   useEffect(() => {
@@ -176,6 +66,68 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
       setShowSuggestion(true);
     }
   }, [suggestedSeats]);
+  
+  // Lấy danh sách ghế đã đặt
+  const fetchReservedSeats = async (showtimeId) => {
+    try {
+      setLoading(true);
+      console.log("Fetching reserved seats for showtime:", showtimeId);
+      
+      const checkData = {
+        showtimeId: parseInt(showtimeId),
+        seats: [] // Gửi mảng rỗng để lấy tất cả ghế đã đặt
+      };
+      
+      const response = await roomApi.checkSeatsAvailability(selectedRoom, checkData);
+      console.log("Reserved seats response:", response.data);
+      
+      if (response.data && response.data.reservedSeats) {
+        setLocalReservedSeats(response.data.reservedSeats);
+        
+        // Cập nhật ma trận ghế để đánh dấu ghế đã đặt
+        if (localSeats && localSeats.matrix && localSeats.matrix.length > 0) {
+          updateReservedSeatsInMatrix(response.data.reservedSeats);
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách ghế đã đặt:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Cập nhật ma trận ghế với ghế đã đặt
+  const updateReservedSeatsInMatrix = (reservedSeatsList) => {
+    if (!localSeats.matrix || !localSeats.rowNames) return;
+    
+    const updatedMatrix = [...localSeats.matrix];
+    const rowMapping = {};
+    
+    // Tạo mapping từ tên hàng -> index
+    localSeats.rowNames.forEach((rowName, index) => {
+      rowMapping[rowName] = index;
+    });
+    
+    reservedSeatsList.forEach(reservedSeat => {
+      const [rowName, seatNumber] = reservedSeat.split('-');
+      const rowIndex = rowMapping[rowName];
+      const colIndex = parseInt(seatNumber) - 1;
+      
+      // Chỉ cập nhật nếu vị trí nằm trong ma trận
+      if (rowIndex !== undefined && colIndex >= 0 && colIndex < localSeats.maxCol) {
+        // Đánh dấu ghế đã đặt là 3
+        if (updatedMatrix[rowIndex][colIndex] > 0) {
+          updatedMatrix[rowIndex][colIndex] = 3;
+        }
+      }
+    });
+    
+    // Cập nhật state seats
+    setLocalSeats({
+      ...localSeats,
+      matrix: updatedMatrix
+    });
+  };
   
   // Chọn ghế gợi ý
   const selectSuggestedSeats = () => {
@@ -318,7 +270,11 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
   
   // Xác định CSS class cho ghế
   const getSeatClass = (row, col) => {
-    if (!localSeats.matrix || !localSeats.rowNames) return 'invisible';
+    if (!localSeats.matrix || !localSeats.rowNames || 
+        row >= localSeats.matrix.length || 
+        col >= localSeats.matrix[row].length) {
+      return 'invisible';
+    }
     
     const seatValue = localSeats.matrix[row][col];
     const rowName = localSeats.rowNames[row];
@@ -330,37 +286,44 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
     
     // Ghế đã đặt
     if (isSeatReserved(row, col)) {
-      return `${classes} seat-reserved cursor-not-allowed`;
+      return `${classes} bg-gray-600 text-gray-400 cursor-not-allowed`;
     }
     
     // Ghế đã chọn
     if (isSeatSelected(rowName, seatNumber)) {
-      return `${classes} seat-selected`;
+      return `${classes} bg-primary-dark text-white`;
     }
     
     // Ghế gợi ý
     if (showSuggestion && isSuggestedSeat(rowName, seatNumber)) {
-      return `${classes} seat-suggested`;
+      return `${classes} bg-blue-600/70 text-white`;
     }
     
     // Ghế premium/VIP
     if (seatValue === 2) {
-      return `${classes} bg-yellow-600/80 hover:bg-yellow-500`;
+      return `${classes} bg-yellow-600/80 hover:bg-yellow-500 text-white`;
     }
     
     // Ghế thường
-    return `${classes} seat-available`;
+    return `${classes} bg-blue-700/80 hover:bg-blue-600 text-white`;
   };
 
   // Xử lý khi người dùng chọn ghế
   const handleSeatClick = (rowIndex, colIndex) => {
     if (!localSeats.matrix || !localSeats.rowNames) return;
     
+    // Debug info
+    console.log("Clicking seat:", rowIndex, colIndex);
+    console.log("Matrix value:", localSeats.matrix[rowIndex][colIndex]);
+    
     const rowName = localSeats.rowNames[rowIndex];
     const seatNumber = (colIndex + 1).toString();
     const seatValue = localSeats.matrix[rowIndex][colIndex];
     
-    if (colIndex < localSeats.matrix[rowIndex].length && seatValue !== 0 && !isSeatReserved(rowIndex, colIndex)) {
+    if (colIndex < localSeats.matrix[rowIndex].length && 
+        seatValue !== 0 && 
+        !isSeatReserved(rowIndex, colIndex)) {
+      
       const seatType = seatValue === 2 ? 'premium' : 'standard';
       const extraCharge = seatValue === 2 ? 15000 : 0;
       
@@ -370,6 +333,15 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
       selectSeat(rowName, seatNumber, seatId, seatType, extraCharge);
     }
   };
+
+  // Debug info
+  console.log("BookingSeats Render:", {
+    hasSeats: localSeats.matrix && localSeats.matrix.length > 0,
+    rowsCount: localSeats.matrix?.length,
+    seatsMatrix: localSeats.matrix,
+    rowNames: localSeats.rowNames,
+    selectedSeats: selectedSeats
+  });
 
   if (loading) {
     return (
@@ -381,7 +353,7 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center p-12">
-            <Loader2 className="w-10 h-10 loading-spinner text-primary-dark mb-4" />
+            <Loader2 className="w-10 h-10 animate-spin text-primary-dark mb-4" />
             <p className="text-gray-300 animate-pulse">Đang tải thông tin ghế...</p>
           </div>
         </CardContent>
@@ -446,7 +418,7 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
             {/* Chú thích */}
             <div className="flex flex-wrap justify-center gap-4 mb-8 p-4 bg-gray-800/30 rounded-lg">
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-sm bg-cinema-seat-available"></div>
+                <div className="w-4 h-4 rounded-sm bg-blue-700/80"></div>
                 <span className="text-xs">Ghế thường</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -454,16 +426,16 @@ export default function BookingSeats({ seats = { matrix: [], rowNames: [], maxCo
                 <span className="text-xs">Ghế Premium</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-sm bg-cinema-seat-selected"></div>
+                <div className="w-4 h-4 rounded-sm bg-primary-dark"></div>
                 <span className="text-xs">Ghế đã chọn</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-sm bg-cinema-seat-reserved"></div>
+                <div className="w-4 h-4 rounded-sm bg-gray-600"></div>
                 <span className="text-xs">Ghế đã đặt</span>
               </div>
               {showSuggestion && (
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded-sm bg-cinema-seat-suggested"></div>
+                  <div className="w-4 h-4 rounded-sm bg-blue-600/70"></div>
                   <span className="text-xs">Ghế gợi ý</span>
                 </div>
               )}

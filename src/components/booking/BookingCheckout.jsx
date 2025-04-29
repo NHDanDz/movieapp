@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Loader2, Ticket, CreditCard, Info, User, Phone, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { roomApi } from '@/lib/api'
+import { Label } from '@/components/ui/label'
 
 export default function BookingCheckout() {
   const { 
