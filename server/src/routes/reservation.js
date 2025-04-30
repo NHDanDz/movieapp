@@ -8,18 +8,27 @@ const router = new express.Router();
 
 // Create a reservation
 router.post('/reservations', auth.simple, async (req, res) => {
-  const reservation = new Reservation(req.body);
-
-  const QRCode = await generateQR(`https://razorpay.com`);
-
   try {
+    // Kiểm tra dữ liệu đầu vào
+    if (!req.body.date) {
+      // Nếu không có date, gán mặc định là ngày hiện tại
+      req.body.date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    }
+    if (!req.body.startAt) {
+      // Lấy giờ hiện tại làm thời gian bắt đầu mặc định (format HH:MM)
+      const now = new Date();
+      req.body.startAt = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    }
+    const reservation = new Reservation(req.body);
+    const QRCode = await generateQR(`https://razorpay.com`);
+    
     await reservation.save();
     res.status(201).send({ reservation, QRCode });
   } catch (e) {
+    console.error('Error creating reservation:', e);
     res.status(400).send(e);
   }
 });
-
 // Get all reservations
 router.get('/reservations', auth.simple, async (req, res) => {
   try {

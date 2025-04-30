@@ -128,7 +128,24 @@ export default function BookingCheckout() {
         seatPrice: roomPrice + (seat.extraCharge || 0)
       }))
     }
-    
+      // Thêm log kiểm tra dữ liệu
+  console.log('=== DATA TRƯỚC KHI GỬI LÊN SERVER ===');
+  console.log('Reservation Data:', reservationData);
+  console.log('date:', reservationData.date, 'Type:', typeof reservationData.date);
+  console.log('startAt:', reservationData.startAt, 'Type:', typeof reservationData.startAt);
+  console.log('selectedDate:', selectedDate, 'Type:', typeof selectedDate);
+  console.log('selectedTime:', selectedTime, 'Type:', typeof selectedTime);
+  
+  // Kiểm tra null hoặc undefined
+  if (!reservationData.date) {
+    console.error('Reservation Data:', reservationData);
+    console.error('CẢNH BÁO: Trường date đang bị null hoặc undefined!');
+  }
+  
+  if (!reservationData.startAt) {
+    console.error('CẢNH BÁO: Trường startAt đang bị null hoặc undefined!');
+  }
+  
     const result = await addReservation(reservationData)
     
     if (result && result.status === 'success') {

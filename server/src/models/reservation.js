@@ -33,6 +33,15 @@ class Reservation {
       await transaction.begin();
       
       try {
+        // Đảm bảo trường date có giá trị
+        if (!this.date) {
+          this.date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+        }
+        if (!this.startAt) {
+          // Lấy giờ hiện tại làm thời gian bắt đầu mặc định (format HH:MM)
+          const now = new Date();
+          this.startAt = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
         // Nếu không có QR code, tạo QR code mới
         if (!this.qrCode) {
           const qrCodeUrl = `https://cinema-booking.com/tickets/verify/${this.id || 'new'}`;
